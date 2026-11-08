@@ -273,11 +273,32 @@ def test_local(browser, base):
     open_fixture(page, 'フライヤー')
     check('昼のフライヤーにも 12 枠', len(placed_texts(page)) == 12)
 
+    # 時間帯ごとの画面の色
+    # 色は .35s のアニメーションで変わるので、変数の値（即時）で確かめ、実際の塗りは待ってから見る
+    var_bg = "getComputedStyle(document.documentElement).getPropertyValue('--bg').trim()"
+    open_sheet(page, '朝')
+    bg_am = page.evaluate(var_bg)
+    page.wait_for_timeout(500)
+    head_am = page.evaluate("getComputedStyle(document.querySelector('header')).backgroundColor")
+    open_sheet(page, '昼')
+    bg_noon = page.evaluate(var_bg)
+    open_sheet(page, '夕')
+    bg_pm = page.evaluate(var_bg)
+    check('時間帯で画面の色が変わる（朝・昼・夕が別色）', len({bg_am, bg_noon, bg_pm}) == 3 and page.evaluate("document.body.dataset.theme") == 'evening', f'{bg_am} {bg_noon} {bg_pm}')
+    check('ヘッダーも時間帯の色（朝＝朝焼けの茶）', head_am == 'rgb(154, 74, 10)', head_am)
+    page.click('#sheetManage')
+    page.wait_for_selector('#sheetOverlay.show')
+    page.click('#sheetMgmt .mgmt-colors >> nth=2 >> button[title="藍"]')
+    check('色を選び直せる（夕→藍）', page.evaluate("store.sheets['sh-pm'].color") == 'night' and page.evaluate("document.body.dataset.theme") == 'night')
+    page.click('#sheetClose')
+    open_sheet(page, '昼')
+
     # 時間帯の追加・名前変更
     page.click('#sheetManage')
     page.fill('#newSheetName', '深夜')
     page.click('#newSheetAdd')
     check('時間帯を追加', page.evaluate('liveSheets().map(s=>s.name)') == ['朝', '昼', '夕', '深夜'])
+    check('追加した時間帯は名前から色が決まる（深夜→藍）', page.evaluate("liveSheets()[3].color") == 'night')
     page.locator('#sheetMgmt input').nth(0).fill('早朝')
     page.locator('#sheetMgmt input').nth(0).dispatch_event('change')
     check('時間帯の名前変更', page.evaluate("store.sheets['sh-am'].name") == '早朝')

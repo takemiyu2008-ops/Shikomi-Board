@@ -18,7 +18,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### 概念
 - **什器（fixture）**: 段の並び。各段に枠数 1〜4（`shelves:[{slots:n}]`）。種類 `cat`（パン／フライヤー／その他）を持ち、枠をタップしたとき同じ種類の商品を先に出す
-- **時間帯（sheet）**: 配置表の束（朝・昼・夕など）。追加・名前変更・並び替え・削除・他の時間帯からのコピー
+- **時間帯（sheet）**: 配置表の束（朝・昼・夕など）。追加・名前変更・並び替え・削除・他の時間帯からのコピー。`color` で画面の色（`THEMES`: morning/noon/evening/night/green/plain）。未設定なら `guessTheme(name)` が名前から決める（朝→朝焼け、昼→空、夕→茜、夜→藍）。`applyTheme` が CSS 変数（--bg/--head/--accent/--board…）を差し替える。印刷は時間帯名だけ色を付ける
 - **商品（product）**: `name`（正式名）と `short`（枠に出す短い表示名）と `cat`
 - **枠（cell）**: キー `"<sheetId>:<fixtureId>:<段>:<枠>"`（0 始まり）。値 `{pid, qty, memo, at, by}`。空き枠は `pid:null`
 

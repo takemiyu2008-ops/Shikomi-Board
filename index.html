@@ -9,7 +9,9 @@
   --bg:#f2f4f7; --card:#ffffff; --ink:#1c2434; --sub:#68717f;
   --accent:#0f6fde; --in:#0c8a4c; --out:#c2413b; --line:#e2e6ec; --warn:#b7791f;
   --steel:#c9ced6; --steel-dark:#9aa3ae;
+  --head:#1c2434; --head-ink:#fff; --board:#f9fafb; --board2:#eef1f5; --chip:#eef1f5;
 }
+body, header, .board, nav.tabs button.active, .chips button.active, .seg button.active{transition:background-color .35s, color .35s, border-color .35s;}
 *{box-sizing:border-box; margin:0; padding:0;}
 body{
   font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;
@@ -19,7 +21,7 @@ body{
 html,body{overflow-x:hidden;}
 .topbar{position:sticky; top:0; z-index:20;}
 header{
-  background:var(--ink); color:#fff;
+  background:var(--head); color:var(--head-ink);
   padding:8px 16px; display:flex; justify-content:space-between; align-items:center; gap:8px;
 }
 header h1{font-size:16px; font-weight:600;}
@@ -104,7 +106,7 @@ label.field{display:block; font-size:12px; color:var(--sub); margin:12px 0 4px;}
 .seg button{flex:1; border:none; background:none; padding:9px 4px; font-size:14px; border-radius:8px; color:var(--sub); cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
 .seg button.active{background:#fff; color:var(--ink); font-weight:600; box-shadow:0 1px 2px rgba(0,0,0,.08);}
 .board{
-  background:linear-gradient(#f9fafb,#eef1f5); border:3px solid var(--steel); border-radius:16px; padding:12px 10px 6px;
+  background:linear-gradient(var(--board),var(--board2)); border:3px solid var(--steel); border-radius:16px; padding:12px 10px 6px;
   box-shadow:inset 0 0 0 1px #fff, 0 1px 3px rgba(0,0,0,.06); margin-bottom:12px; touch-action:pan-y;
 }
 .board .fx-title{font-size:12px; color:var(--sub); text-align:center; margin-bottom:8px; letter-spacing:.08em;}
@@ -122,7 +124,7 @@ label.field{display:block; font-size:12px; color:var(--sub); margin:12px 0 4px;}
 .cell .nm{font-size:13px; font-weight:700; line-height:1.3; word-break:keep-all; overflow-wrap:anywhere;}
 .cell .nm.gone{color:var(--out); text-decoration:line-through;}
 .cell.hasq .nm{padding-right:38px;}
-.cell .qty{position:absolute; top:5px; right:6px; font-size:11px; font-weight:700; background:var(--ink); color:#fff; border-radius:999px; padding:1px 7px;}
+.cell .qty{position:absolute; top:5px; right:6px; font-size:11px; font-weight:700; background:var(--accent); color:#fff; border-radius:999px; padding:1px 7px;}
 .cell .memo{font-size:11px; color:var(--sub); line-height:1.3; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
 .cell.moving{outline:3px solid var(--accent); outline-offset:-1px;}
 .board.move-mode .cell:not(.moving){outline:2px dashed #9ec1f5; outline-offset:-1px;}
@@ -158,7 +160,7 @@ label.field{display:block; font-size:12px; color:var(--sub); margin:12px 0 4px;}
 .row .t .n{font-size:15px; font-weight:600;}
 .row .t .s{font-size:12px; color:var(--sub); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
 .row .side{font-size:12px; color:var(--sub); white-space:nowrap;}
-.group-title{font-size:12px; font-weight:600; color:var(--sub); background:#eef1f5; padding:4px 10px; border-radius:999px; display:inline-block; margin:12px 0 4px;}
+.group-title{font-size:12px; font-weight:600; color:var(--sub); background:var(--chip); padding:4px 10px; border-radius:999px; display:inline-block; margin:12px 0 4px;}
 .fx-card .shelf-row{display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid var(--line); font-size:14px;}
 .fx-card .shelf-row:last-child{border-bottom:none;}
 .fx-card .shelf-row .lab{width:52px; color:var(--sub); font-size:12px;}
@@ -177,6 +179,10 @@ label.field{display:block; font-size:12px; color:var(--sub); margin:12px 0 4px;}
 .mgmt-row:last-child{border-bottom:none;}
 .mgmt-row input{flex:1; padding:8px; font-size:15px;}
 .mgmt-row .icon-btn{height:38px; width:38px;}
+.mgmt-colors{display:flex; gap:8px; padding:4px 0 10px 2px; border-bottom:1px solid var(--line); margin-bottom:4px;}
+.mgmt-colors button{width:28px; height:28px; border-radius:50%; border:2px solid #fff; box-shadow:0 0 0 1px var(--line); cursor:pointer;}
+.mgmt-colors button.active{box-shadow:0 0 0 2px var(--ink);}
+.mgmt-colors span{font-size:12px; color:var(--sub); align-self:center; margin-right:2px;}
 /* 印刷プレビュー（画面） */
 .preview{border:1px solid var(--line); border-radius:8px; background:#fff; padding:8px; overflow:hidden; position:relative;}
 .preview .p-paper{width:273mm; transform-origin:0 0;}
@@ -199,7 +205,7 @@ label.field{display:block; font-size:12px; color:var(--sub); margin:12px 0 4px;}
 .p-page:last-child{break-after:auto; page-break-after:auto;}
 .p-head{display:flex; justify-content:space-between; align-items:flex-start; gap:6mm; margin-bottom:4mm;}
 .p-head h1{font-size:16pt; margin:0 0 1mm; white-space:nowrap;}
-.p-head h1 b{font-size:20pt; margin-left:4mm;}
+.p-head h1 b{font-size:20pt; margin-left:4mm; color:var(--p-title,#000);}
 .p-sub{font-size:9pt; color:#444;}
 .p-sub span{white-space:nowrap; margin-right:4mm;}
 .p-stamps{display:flex; flex-shrink:0; border:0.6pt solid #000;}
@@ -364,7 +370,7 @@ label.field{display:block; font-size:12px; color:var(--sub); margin:12px 0 4px;}
 <div class="modal-overlay" id="sheetOverlay">
   <div class="modal">
     <h2>時間帯の管理</h2>
-    <p class="desc">名前を直す・順番を変える・削除する。配置を他の時間帯からコピーすることもできます。</p>
+    <p class="desc">名前を直す・順番を変える・画面の色を選ぶ・削除する。配置を他の時間帯からコピーすることもできます。</p>
     <div id="sheetMgmt"></div>
     <div class="inline" style="margin-top:12px;">
       <input type="text" id="newSheetName" placeholder="新しい時間帯の名前（例：深夜）" autocomplete="off">
@@ -453,6 +459,34 @@ const OPERATORS = ['篠原', '橋本', '小宮山', '中瀬'];
 
 // 商品の種類。什器にも種類を付け、枠をタップしたときはその什器向けの商品を先に出す
 const CATS = ['パン', 'フライヤー', 'その他'];
+// 時間帯ごとの画面の色。時間帯の管理で選ぶ。名前から自動で決めることもできる（朝→朝焼け、昼→空、夕→茜、夜→藍）
+const THEMES = {
+  morning: { label: '朝焼け', bg: '#fff6e8', head: '#9a4a0a', accent: '#d97706', board: '#fff9f0', board2: '#fdebd0', chip: '#fdebd0' },
+  noon:    { label: '空',     bg: '#eef6fc', head: '#0b4a7a', accent: '#0f82c9', board: '#f5fbff', board2: '#dcedf9', chip: '#dcedf9' },
+  evening: { label: '茜',     bg: '#f8eef3', head: '#6b1d45', accent: '#b8336a', board: '#fcf4f8', board2: '#f1dbe6', chip: '#f1dbe6' },
+  night:   { label: '藍',     bg: '#eceef7', head: '#1d2550', accent: '#4650b8', board: '#f3f4fb', board2: '#dde0f2', chip: '#dde0f2' },
+  green:   { label: '若葉',   bg: '#eef7ef', head: '#1f5a2e', accent: '#2f8f4a', board: '#f4fbf5', board2: '#dcefdf', chip: '#dcefdf' },
+  plain:   { label: '標準',   bg: '#f2f4f7', head: '#1c2434', accent: '#0f6fde', board: '#f9fafb', board2: '#eef1f5', chip: '#eef1f5' },
+};
+function guessTheme(name) {
+  if (/深夜|夜/.test(name)) return 'night';
+  if (/朝|早/.test(name)) return 'morning';
+  if (/昼/.test(name)) return 'noon';
+  if (/夕|夜前|晩/.test(name)) return 'evening';
+  return 'plain';
+}
+function applyTheme(sheet) {
+  const key = sheet && THEMES[sheet.color] ? sheet.color : (sheet ? guessTheme(sheet.name) : 'plain');
+  const t = THEMES[key];
+  const r = document.documentElement.style;
+  r.setProperty('--bg', t.bg); r.setProperty('--head', t.head); r.setProperty('--accent', t.accent);
+  r.setProperty('--board', t.board); r.setProperty('--board2', t.board2); r.setProperty('--chip', t.chip);
+  r.setProperty('--p-title', t.head);
+  document.body.dataset.theme = key;
+  let meta = document.querySelector('meta[name="theme-color"]');
+  if (!meta) { meta = document.createElement('meta'); meta.name = 'theme-color'; document.head.appendChild(meta); }
+  meta.content = t.head;
+}
 const MAX_SLOTS = 4;
 const MAX_SHELVES = 8;
 const SEED_AT = 1; // 初期データの更新時刻。どの端末の編集（Date.now()）よりも古いので、必ず編集が勝つ
@@ -464,9 +498,9 @@ const SEED = {
     { id: 'fx-fryer', name: 'フライヤー什器', cat: 'フライヤー', order: 2, shelves: [4, 2, 2, 4] },
   ],
   sheets: [
-    { id: 'sh-am', name: '朝', order: 1 },
-    { id: 'sh-noon', name: '昼', order: 2 },
-    { id: 'sh-pm', name: '夕', order: 3 },
+    { id: 'sh-am', name: '朝', order: 1, color: 'morning' },
+    { id: 'sh-noon', name: '昼', order: 2, color: 'noon' },
+    { id: 'sh-pm', name: '夕', order: 3, color: 'evening' },
   ],
   products: [
     ['p-b01', 'お店で焼いたカリッもちっバター餅', 'バター餅', 'パン'],
@@ -509,7 +543,7 @@ const SEED = {
 function seedStore() {
   const s = emptyStore();
   SEED.fixtures.forEach(f => { s.fixtures[f.id] = { id: f.id, name: f.name, cat: f.cat, order: f.order, shelves: f.shelves.map(n => ({ slots: n })), at: SEED_AT, by: '', del: false }; });
-  SEED.sheets.forEach(sh => { s.sheets[sh.id] = { id: sh.id, name: sh.name, order: sh.order, at: SEED_AT, by: '', del: false }; });
+  SEED.sheets.forEach(sh => { s.sheets[sh.id] = { id: sh.id, name: sh.name, order: sh.order, color: sh.color, at: SEED_AT, by: '', del: false }; });
   SEED.products.forEach(([id, name, short, cat]) => { s.products[id] = { id, name, short, cat, at: SEED_AT, by: '', del: false }; });
   SEED.cells.forEach(([fid, r, c, pid]) => { s.cells[cellKey('sh-am', fid, r, c)] = { pid, qty: null, memo: '', at: SEED_AT, by: '' }; });
   return s;
@@ -538,7 +572,7 @@ function normalizeStore(s) {
   });
   Object.entries(obj(s.sheets)).forEach(([id, sh]) => {
     if (!sh || typeof sh !== 'object') return;
-    out.sheets[id] = { id, name: str(sh.name), order: num(sh.order, 0), at: num(sh.at, 0), by: str(sh.by), del: !!sh.del };
+    out.sheets[id] = { id, name: str(sh.name), order: num(sh.order, 0), color: THEMES[sh.color] ? sh.color : '', at: num(sh.at, 0), by: str(sh.by), del: !!sh.del };
   });
   Object.entries(obj(s.cells)).forEach(([key, c]) => {
     if (!c || typeof c !== 'object') return;
@@ -747,7 +781,7 @@ function renderBoard() {
   board.innerHTML = h;
   board.querySelectorAll('.cell').forEach(btn => btn.addEventListener('click', () => onCellTap(Number(btn.dataset.r), Number(btn.dataset.c))));
 }
-function renderBoardTab() { renderSheetChips(); renderFixtureSeg(); renderBoard(); renderHeader(); }
+function renderBoardTab() { applyTheme(currentSheet()); renderSheetChips(); renderFixtureSeg(); renderBoard(); renderHeader(); }
 
 function onCellTap(r, c) {
   const sh = currentSheet(), fx = currentFixture();
@@ -871,7 +905,7 @@ function renderSheetMgmt() {
   list.forEach((sh, i) => {
     const row = document.createElement('div'); row.className = 'mgmt-row';
     const inp = document.createElement('input'); inp.type = 'text'; inp.value = sh.name; inp.placeholder = '名前';
-    inp.addEventListener('change', () => { const v = inp.value.trim(); if (!v) { inp.value = sh.name; return; } sh.name = v; stamp(sh); save(); renderBoardTab(); });
+    inp.addEventListener('change', () => { const v = inp.value.trim(); if (!v) { inp.value = sh.name; return; } sh.name = v; if (!THEMES[sh.color]) sh.color = guessTheme(v); stamp(sh); save(); renderSheetMgmt(); renderBoardTab(); });
     const up = document.createElement('button'); up.type = 'button'; up.className = 'icon-btn'; up.textContent = '↑'; up.disabled = i === 0;
     up.addEventListener('click', () => { swapOrder(list[i - 1], sh); renderSheetMgmt(); });
     const dn = document.createElement('button'); dn.type = 'button'; dn.className = 'icon-btn'; dn.textContent = '↓'; dn.disabled = i === list.length - 1;
@@ -886,6 +920,18 @@ function renderSheetMgmt() {
     });
     row.append(inp, up, dn, rm);
     box.appendChild(row);
+    const colors = document.createElement('div'); colors.className = 'mgmt-colors';
+    const lab = document.createElement('span'); lab.textContent = '色'; colors.appendChild(lab);
+    const curKey = THEMES[sh.color] ? sh.color : guessTheme(sh.name);
+    Object.entries(THEMES).forEach(([key, t]) => {
+      const b = document.createElement('button'); b.type = 'button'; b.title = t.label;
+      b.style.background = `linear-gradient(135deg, ${t.head} 50%, ${t.accent} 50%)`;
+      b.className = key === curKey ? 'active' : '';
+      b.setAttribute('aria-label', `${sh.name} の色を${t.label}に`);
+      b.addEventListener('click', () => { sh.color = key; stamp(sh); save(); renderSheetMgmt(); renderBoardTab(); });
+      colors.appendChild(b);
+    });
+    box.appendChild(colors);
   });
   if (!list.length) box.innerHTML = '<p class="hint">時間帯がありません</p>';
   const from = document.getElementById('copyFrom'), to = document.getElementById('copyTo');
@@ -906,7 +952,7 @@ function swapOrder(a, b) {
 function addSheet(name) {
   const id = 'sh-' + newUid();
   const order = Math.max(0, ...liveSheets().map(s => s.order)) + 1;
-  store.sheets[id] = stamp({ id, name, order, del: false });
+  store.sheets[id] = stamp({ id, name, order, color: guessTheme(name), del: false });
   save();
   return id;
 }
@@ -1125,7 +1171,8 @@ function buildPrintHtml(sheetIds, combine) {
   let h = '';
   const page = (sh, fxList, suffix) => {
     const last = latestChange();
-    h += `<div class="p-page"><div class="p-head"><div><h1>仕込み配置表<b>${escapeHtml(sh.name)}</b>${suffix ? `<span style="font-size:11pt; font-weight:400; margin-left:3mm;">${escapeHtml(suffix)}</span>` : ''}</h1>` +
+    const th = THEMES[THEMES[sh.color] ? sh.color : guessTheme(sh.name)];
+    h += `<div class="p-page" style="--p-title:${th.head}"><div class="p-head"><div><h1>仕込み配置表<b>${escapeHtml(sh.name)}</b>${suffix ? `<span style="font-size:11pt; font-weight:400; margin-left:3mm;">${escapeHtml(suffix)}</span>` : ''}</h1>` +
       `<div class="p-sub"><span>印刷 ${fmtDate(now)} ${pad2(now.getHours())}:${pad2(now.getMinutes())}</span><span>印刷者 ${escapeHtml(operator || '—')}</span>` +
       (last ? `<span>最終変更 ${fmtWhen(last.at)} ${escapeHtml(last.by || '')}</span>` : '') + `</div></div>` +
       `<div class="p-stamps"><div><span>担当</span><i></i></div><div><span>確認</span><i></i></div></div></div>` +
