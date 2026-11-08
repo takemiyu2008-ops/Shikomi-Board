@@ -120,6 +120,8 @@ label.field{display:block; font-size:12px; color:var(--sub); margin:12px 0 4px;}
   overflow:hidden;
 }
 .cell:active{background:#f3f6fb;}
+.cell{-webkit-touch-callout:none; -webkit-user-select:none; user-select:none; touch-action:pan-y;}
+.cell.pressing{transform:scale(.96); background:#eef4fd; border-color:var(--accent); transition:transform .12s;}
 .cell.empty{border-style:dashed; background:rgba(255,255,255,.55); color:var(--sub); align-items:center; justify-content:center; font-size:22px;}
 .cell .nm{font-size:13px; font-weight:700; line-height:1.3; word-break:keep-all; overflow-wrap:anywhere;}
 .cell .nm.gone{color:var(--out); text-decoration:line-through;}
@@ -279,7 +281,7 @@ label.field{display:block; font-size:12px; color:var(--sub); margin:12px 0 4px;}
     <button type="button" id="moveCancel">やめる</button>
   </div>
   <div class="board" id="board"></div>
-  <p class="hint">枠をタップして商品・個数・メモを入れます。左右にスワイプで什器を切り替え。什器の段数・枠数は「設定」で変えられます。</p>
+  <p class="hint">枠をタップして商品・個数・メモを入れます。<b>枠を長押し</b>すると入れ替えモードになり、移動先の枠をタップで入れ替わります。左右にスワイプで什器を切り替え。什器の段数・枠数は「設定」で変えられます。</p>
 </section>
 
 <!-- ========== 商品 ========== -->
@@ -815,7 +817,13 @@ function renderBoard() {
     h += `</div><div class="rail"><span>${r + 1}段目</span></div></div>`;
   });
   board.innerHTML = h;
-  board.querySelectorAll('.cell').forEach(btn => btn.addEventListener('click', () => onCellTap(Number(btn.dataset.r), Number(btn.dataset.c))));
+  board.querySelectorAll('.cell').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (longPress.fired) { longPress.fired = false; return; } // 長押し直後の click は無視
+      onCellTap(Number(btn.dataset.r), Number(btn.dataset.c));
+    });
+    attachLongPress(btn);
+  });
 }
 function renderBoardTab() { applyTheme(currentSheet()); renderSheetChips(); renderFixtureSeg(); renderBoard(); renderHeader(); }
 
@@ -835,6 +843,34 @@ function onCellTap(r, c) {
     return;
   }
   openCellSheet(r, c);
+}
+// 長押し（約 0.45 秒）で入れ替えモードに入る。指が 10px 以上動いたら（スクロール）取り消す。マウスでも動く
+const longPress = { timer: null, fired: false, x: 0, y: 0 };
+const LONG_PRESS_MS = 450;
+function attachLongPress(btn) {
+  const cancel = () => { clearTimeout(longPress.timer); longPress.timer = null; btn.classList.remove('pressing'); };
+  btn.addEventListener('pointerdown', e => {
+    if (e.button !== undefined && e.button !== 0) return;
+    longPress.fired = false; // 新しい押し始めで「直前の長押しの click を無視する印」を必ず消す（盤面の描き直しで click が届かないことがあるため）
+    if (move.from) return; // すでに入れ替え中はタップで確定させる
+    longPress.x = e.clientX; longPress.y = e.clientY;
+    clearTimeout(longPress.timer);
+    longPress.timer = setTimeout(() => {
+      longPress.timer = null;
+      longPress.fired = true;
+      setTimeout(() => { longPress.fired = false; }, 700); // 念のため時間でも消す
+      btn.classList.remove('pressing');
+      if (navigator.vibrate) { try { navigator.vibrate(15); } catch (err) {} }
+      startMove(Number(btn.dataset.r), Number(btn.dataset.c));
+    }, LONG_PRESS_MS);
+    btn.classList.add('pressing');
+  });
+  btn.addEventListener('pointermove', e => {
+    if (!longPress.timer) return;
+    if (Math.abs(e.clientX - longPress.x) > 10 || Math.abs(e.clientY - longPress.y) > 10) cancel();
+  });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => btn.addEventListener(ev, cancel));
+  btn.addEventListener('contextmenu', e => e.preventDefault()); // 長押しの右クリックメニューを出さない
 }
 function startMove(r, c) {
   move.from = { r, c };

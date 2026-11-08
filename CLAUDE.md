@@ -55,7 +55,7 @@ store = { version, fixtures:{id→…}, products:{id→…}, sheets:{id→…}, 
 ## 技術方針（ユーザーと合意済みの制約）
 
 - 単一の `index.html` に HTML / CSS / JS をすべてインラインで書く。ビルドツール・外部依存・CDN は使わない（Firebase も SDK を使わず REST + fetch のみ）
-- ドラッグ＆ドロップは使わない。入れ替えは「枠をタップ → 別の枠と入れ替え → 移動先をタップ」
+- ドラッグ＆ドロップは使わない。入れ替えは**枠を長押し（450ms・`attachLongPress`、10px 動いたら取り消し）→ 移動先をタップ**。枠シートの「別の枠と入れ替え」でも同じモードに入る。長押しで盤面を描き直すため、直後の click は `longPress.fired` で無視し、次の pointerdown で必ず印を消す
 - UI は日本語。操作者は `OPERATORS` の固定名簿
 
 ## 実行方法

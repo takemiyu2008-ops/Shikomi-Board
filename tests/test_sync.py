@@ -254,6 +254,31 @@ def test_local(browser, base):
     check('入れ替え: 0 番が空に・3 番にカレーパン',
           board_cells(page).nth(0).evaluate('e => e.classList.contains("empty")') and 'カレーパン' in board_cells(page).nth(3).inner_text())
 
+    # 長押しで入れ替えモード → 移動先をタップ（3 番のカレーパンを 1 番へ）
+    box = board_cells(page).nth(3).bounding_box()
+    page.mouse.move(box['x'] + box['width'] / 2, box['y'] + box['height'] / 2)
+    page.mouse.down()
+    page.wait_for_timeout(700)
+    page.mouse.up()
+    check('長押しで入れ替えモードに入る（シートは開かない）', not page.locator('#moveBanner').is_hidden() and not page.locator('#cellOverlay').evaluate('e => e.classList.contains("show")'))
+    board_cells(page).nth(1).click()
+    check('長押し→タップで入れ替わる', 'カレーパン' in board_cells(page).nth(1).inner_text() and board_cells(page).nth(3).evaluate('e => e.classList.contains("empty")'))
+    # 短く押しただけなら普通のタップ（シートが開く）
+    board_cells(page).nth(1).click()
+    check('短いタップはシートが開く', page.locator('#cellOverlay').evaluate('e => e.classList.contains("show")'))
+    page.click('#csClose')
+    # 指が動いたら長押しは取り消し（スクロール）
+    box = board_cells(page).nth(1).bounding_box()
+    page.mouse.move(box['x'] + 10, box['y'] + 10)
+    page.mouse.down()
+    page.mouse.move(box['x'] + 10, box['y'] + 160, steps=4)  # 枠の外まで動かす（マウスでは同じ要素内で離すと click になるため）
+    page.wait_for_timeout(700)
+    page.mouse.up()
+    check('動かした長押しは発動しない', page.locator('#moveBanner').is_hidden() and not page.locator('#cellOverlay').evaluate('e => e.classList.contains("show")'))
+    # 元の位置に戻す（以降の検査は 3 番にカレーパンがある前提）
+    # nth(3)＝2段目の右（r=1,c=1）、nth(1)＝1段目の右（r=0,c=1）
+    page.evaluate("setCell('sh-noon','fx-bread',1,1,{pid:'p-b11',qty:2,memo:'11/11まで'}); setCell('sh-noon','fx-bread',0,1,{pid:null,qty:null,memo:''}); renderBoard();")
+
     # 空にする
     board_cells(page).nth(3).click()
     page.wait_for_selector('#cellOverlay.show')
