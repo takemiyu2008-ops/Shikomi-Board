@@ -1,0 +1,13 @@
+{
+  "rules": {
+    "shikomi": {
+      "$storeId": {
+        ".read": true,
+        ".write": true,
+        "$other": {
+          ".validate": "$other === 'doc'"
+        }
+      }
+    }
+  }
+}

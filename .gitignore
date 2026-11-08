@@ -1,0 +1,11 @@
+# 依存・ビルド生成物
+node_modules/
+.firebase/
+*.log
+__pycache__/
+.DS_Store
+
+# 秘密情報はコードに書かない。万一の置き忘れ防止
+.env
+.env.*
+*.key

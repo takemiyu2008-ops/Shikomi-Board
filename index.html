@@ -1,0 +1,1443 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>仕込み配置表</title>
+<style>
+:root{
+  --bg:#f2f4f7; --card:#ffffff; --ink:#1c2434; --sub:#68717f;
+  --accent:#0f6fde; --in:#0c8a4c; --out:#c2413b; --line:#e2e6ec; --warn:#b7791f;
+  --steel:#c9ced6; --steel-dark:#9aa3ae;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;
+  background:var(--bg); color:var(--ink); padding-bottom:56px;
+  font-feature-settings:"tnum";
+}
+html,body{overflow-x:hidden;}
+.topbar{position:sticky; top:0; z-index:20;}
+header{
+  background:var(--ink); color:#fff;
+  padding:8px 16px; display:flex; justify-content:space-between; align-items:center; gap:8px;
+}
+header h1{font-size:16px; font-weight:600;}
+header .clock{font-size:11px; opacity:.85; margin-top:2px; font-variant-numeric:tabular-nums;}
+header .right{text-align:right; font-size:11px; opacity:.85; line-height:1.5; white-space:nowrap;}
+header .right b{font-size:13px; opacity:1;}
+nav.tabs{display:flex; background:var(--card); border-bottom:1px solid var(--line);}
+nav.tabs button{
+  flex:1; padding:12px 4px; font-size:14px; border:none; background:none; color:var(--sub);
+  border-bottom:3px solid transparent; cursor:pointer;
+}
+nav.tabs button.active{color:var(--accent); border-bottom-color:var(--accent); font-weight:600;}
+main{max-width:640px; margin:0 auto; padding:16px 12px;}
+section.tab{display:none;}
+section.tab.active{display:block;}
+.card{background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:16px;}
+.card h2{font-size:14px; color:var(--sub); font-weight:600; margin-bottom:12px;}
+.notice{background:#fff7e6; border:1px solid #f0dcae; border-radius:10px; padding:12px; font-size:13px; margin-bottom:16px; line-height:1.6;}
+.hint{font-size:12px; color:var(--sub); margin-top:4px; line-height:1.6;}
+select,textarea,input[type="text"],input[type="number"],input[type="search"],input[type="password"]{
+  width:100%; border:1px solid var(--line); border-radius:9px; padding:10px; font-size:16px;
+  background:#fff; color:var(--ink); font-family:inherit; -webkit-appearance:none; appearance:none;
+}
+label.field{display:block; font-size:12px; color:var(--sub); margin:12px 0 4px;}
+.btn{
+  display:block; width:100%; padding:14px; border:none; border-radius:10px;
+  background:var(--accent); color:#fff; font-size:16px; font-weight:600; cursor:pointer; margin-top:14px;
+}
+.btn:active{opacity:.85;}
+.btn:disabled{opacity:.5; cursor:default;}
+[hidden]{display:none !important;}
+.btn.secondary{background:#eef1f5; color:var(--ink); font-weight:500; font-size:14px; padding:11px;}
+.btn.danger{background:#fdeeee; color:var(--out);}
+.btn.ok{background:var(--in);}
+.data-btns{display:flex; gap:8px; flex-wrap:wrap;}
+.data-btns .btn{flex:1; min-width:140px; margin-top:0;}
+.sync-chip{
+  display:inline-block; font-size:10px; padding:2px 8px; border-radius:999px; border:none;
+  margin-top:3px; cursor:pointer; color:#fff; background:rgba(255,255,255,.16); opacity:.9;
+}
+.sync-chip.ok{background:#0c8a4c;}
+.sync-chip.syncing{background:#0f6fde;}
+.sync-chip.offline{background:#8a6d1f;}
+.sync-chip.error{background:#c2413b;}
+.op-btns{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px; margin-bottom:4px;}
+.op-btns .btn{margin-top:0;}
+.op-btns .btn.selected{background:var(--accent); color:#fff; font-weight:600;}
+.modal-overlay{
+  position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,.45); z-index:40;
+  display:none; align-items:flex-start; justify-content:center; padding:20px 12px; overflow-y:auto;
+}
+.modal-overlay.show{display:flex;}
+.modal{background:var(--card); border-radius:14px; padding:20px; width:100%; max-width:420px; margin:auto 0;}
+.modal h2{font-size:15px; margin-bottom:8px;}
+.modal p.desc{font-size:13px; color:var(--sub); line-height:1.7; margin-bottom:4px;}
+.modal .msg{font-size:13px; color:var(--out); min-height:18px; margin-top:8px;}
+/* 下から出るシート（枠の編集） */
+.modal-overlay.bottom{align-items:flex-end; padding:0;}
+.modal.sheet{max-width:640px; border-radius:16px 16px 0 0; max-height:90vh; max-height:90dvh; overflow-y:auto; padding:16px 16px calc(16px + env(safe-area-inset-bottom));}
+.modal.sheet .grab{width:40px; height:4px; border-radius:2px; background:#d4d9e0; margin:0 auto 12px;}
+#toast{
+  position:fixed; left:50%; bottom:24px; transform:translateX(-50%);
+  background:var(--ink); color:#fff; padding:10px 20px; border-radius:999px; font-size:14px;
+  opacity:0; pointer-events:none; transition:opacity .25s; z-index:50; white-space:nowrap; max-width:92vw; overflow:hidden; text-overflow:ellipsis;
+}
+#toast.show{opacity:.95;}
+.badge{display:inline-block; font-size:10px; padding:1px 6px; border-radius:999px; margin-left:6px; vertical-align:middle; white-space:nowrap;}
+.badge.cat{background:#eef1f5; color:var(--sub);}
+.badge.warn{background:#fff3d6; color:var(--warn);}
+.chips{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;}
+.chips button{
+  border:1px solid var(--line); background:#fff; border-radius:999px; padding:7px 13px; font-size:14px; color:var(--sub); cursor:pointer;
+}
+.chips button.active{background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600;}
+.chips button.ghost{border-style:dashed;}
+/* 配置タブ */
+.bar{display:flex; align-items:center; gap:8px; margin-bottom:10px;}
+.bar .chips{flex:1; margin-bottom:0; overflow-x:auto; flex-wrap:nowrap; -webkit-overflow-scrolling:touch; padding-bottom:2px;}
+.bar .chips button{white-space:nowrap; flex-shrink:0;}
+.icon-btn{border:1px solid var(--line); background:#fff; border-radius:9px; width:40px; height:36px; font-size:16px; cursor:pointer; color:var(--ink); flex-shrink:0;}
+.seg{display:flex; background:#e6e9ee; border-radius:10px; padding:3px; margin-bottom:12px;}
+.seg button{flex:1; border:none; background:none; padding:9px 4px; font-size:14px; border-radius:8px; color:var(--sub); cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.seg button.active{background:#fff; color:var(--ink); font-weight:600; box-shadow:0 1px 2px rgba(0,0,0,.08);}
+.board{
+  background:linear-gradient(#f9fafb,#eef1f5); border:3px solid var(--steel); border-radius:16px; padding:12px 10px 6px;
+  box-shadow:inset 0 0 0 1px #fff, 0 1px 3px rgba(0,0,0,.06); margin-bottom:12px; touch-action:pan-y;
+}
+.board .fx-title{font-size:12px; color:var(--sub); text-align:center; margin-bottom:8px; letter-spacing:.08em;}
+.shelf{margin-bottom:8px;}
+.shelf .cells{display:grid; gap:6px; align-items:stretch;}
+.shelf .rail{height:11px; border-radius:0 0 4px 4px; background:linear-gradient(var(--steel),var(--steel-dark)); margin-top:4px; position:relative;}
+.shelf .rail span{position:absolute; left:6px; top:1px; font-size:9px; color:#fff; line-height:9px; letter-spacing:.05em;}
+.cell{
+  position:relative; min-height:74px; border:1px solid var(--line); border-radius:9px; background:#fff; padding:8px 7px 6px;
+  text-align:left; cursor:pointer; font-family:inherit; color:var(--ink); display:flex; flex-direction:column; justify-content:center; gap:3px;
+  overflow:hidden;
+}
+.cell:active{background:#f3f6fb;}
+.cell.empty{border-style:dashed; background:rgba(255,255,255,.55); color:var(--sub); align-items:center; justify-content:center; font-size:22px;}
+.cell .nm{font-size:13px; font-weight:700; line-height:1.3; word-break:keep-all; overflow-wrap:anywhere;}
+.cell .nm.gone{color:var(--out); text-decoration:line-through;}
+.cell.hasq .nm{padding-right:38px;}
+.cell .qty{position:absolute; top:5px; right:6px; font-size:11px; font-weight:700; background:var(--ink); color:#fff; border-radius:999px; padding:1px 7px;}
+.cell .memo{font-size:11px; color:var(--sub); line-height:1.3; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.cell.moving{outline:3px solid var(--accent); outline-offset:-1px;}
+.board.move-mode .cell:not(.moving){outline:2px dashed #9ec1f5; outline-offset:-1px;}
+.move-banner{background:#e8f1fd; border:1px solid #b9d4f7; color:#0b4a9b; border-radius:10px; padding:10px 12px; font-size:13px; display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:12px;}
+.move-banner button{border:none; background:#fff; border-radius:8px; padding:6px 10px; font-size:13px; cursor:pointer; color:var(--accent);}
+.meta{font-size:12px; color:var(--sub); margin-top:8px; line-height:1.7;}
+/* 枠シート */
+.cs-title{font-size:15px; font-weight:700;}
+.cs-sub{font-size:12px; color:var(--sub); margin-bottom:10px;}
+.cs-row{display:flex; gap:8px; align-items:center; margin-top:10px;}
+.cs-row label{font-size:12px; color:var(--sub); width:48px; flex-shrink:0;}
+.stepper{display:flex; align-items:center; border:1px solid var(--line); border-radius:9px; overflow:hidden; flex:1;}
+.stepper button{width:44px; height:42px; border:none; background:#f3f5f8; font-size:20px; cursor:pointer; color:var(--ink);}
+.stepper input{flex:1; border:none; border-radius:0; text-align:center; font-size:18px; font-weight:600; padding:8px 4px; min-width:0;}
+.stepper input:focus{outline:none;}
+.cs-row input.memo{flex:1;}
+.plist{display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:8px; max-height:38vh; overflow-y:auto; padding:2px;}
+.plist button{
+  border:1px solid var(--line); background:#fff; border-radius:9px; padding:10px 8px; font-size:13px; text-align:left; cursor:pointer; color:var(--ink); line-height:1.3;
+  font-family:inherit; word-break:keep-all; overflow-wrap:anywhere;
+}
+.plist button.selected{background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600;}
+.plist button small{display:block; font-size:10px; color:var(--sub); margin-top:2px;}
+.plist button.selected small{color:#dfe9f8;}
+.plist .none{grid-column:1/-1; font-size:13px; color:var(--sub); padding:10px 4px;}
+.cs-actions{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:14px;}
+.cs-actions .btn{margin-top:0;}
+.cs-actions .btn.wide{grid-column:1/-1;}
+/* 商品タブ・設定 */
+.row{display:flex; align-items:center; gap:10px; padding:10px 2px; border-bottom:1px solid var(--line); cursor:pointer;}
+.row:last-child{border-bottom:none;}
+.row .t{flex:1; min-width:0;}
+.row .t .n{font-size:15px; font-weight:600;}
+.row .t .s{font-size:12px; color:var(--sub); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.row .side{font-size:12px; color:var(--sub); white-space:nowrap;}
+.group-title{font-size:12px; font-weight:600; color:var(--sub); background:#eef1f5; padding:4px 10px; border-radius:999px; display:inline-block; margin:12px 0 4px;}
+.fx-card .shelf-row{display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid var(--line); font-size:14px;}
+.fx-card .shelf-row:last-child{border-bottom:none;}
+.fx-card .shelf-row .lab{width:52px; color:var(--sub); font-size:12px;}
+.fx-card .shelf-row .stepper{max-width:170px;}
+.fx-card .shelf-row .stepper button{height:36px; width:40px;}
+.fx-card .shelf-row .stepper input{font-size:16px; padding:6px 4px;}
+.fx-card .shelf-row .rm{border:none; background:#f7f8fa; border-radius:7px; width:34px; height:34px; color:var(--out); font-size:18px; cursor:pointer; margin-left:auto;}
+.fx-card .head{display:flex; gap:8px; align-items:center; margin-bottom:8px;}
+.fx-card .head input{flex:1;}
+.fx-card .head select{width:auto; padding:10px 8px;}
+.fx-card .head .icon-btn{height:42px;}
+.inline{display:flex; gap:8px; align-items:center;}
+.inline .btn{margin-top:0;}
+.inline input{flex:1;}
+.mgmt-row{display:flex; gap:6px; align-items:center; padding:6px 0; border-bottom:1px solid var(--line);}
+.mgmt-row:last-child{border-bottom:none;}
+.mgmt-row input{flex:1; padding:8px; font-size:15px;}
+.mgmt-row .icon-btn{height:38px; width:38px;}
+/* 印刷プレビュー（画面） */
+.preview{border:1px solid var(--line); border-radius:8px; background:#fff; padding:8px; overflow:hidden; position:relative;}
+.preview .p-paper{width:273mm; transform-origin:0 0;}
+.preview .p-page{margin-bottom:6mm; padding-bottom:6mm; border-bottom:0.8mm dashed var(--line);}
+.preview .p-page:last-child{border-bottom:none; margin-bottom:0;}
+.check{display:flex; align-items:center; gap:8px; font-size:15px; padding:8px 2px;}
+.check input{width:20px; height:20px; accent-color:var(--accent);}
+/* 印刷（A4 横）。画面には出さず、印刷のときだけ #printArea だけを出す */
+#printArea{display:none;}
+@media print{
+  @page{size:A4 landscape; margin:10mm 12mm;}
+  html,body{background:#fff; padding:0; overflow:visible;}
+  body > *:not(#printArea){display:none !important;}
+  #printArea{display:block !important; color:#000; font-size:10pt; line-height:1.35;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;}
+}
+/* 印刷と画面プレビューで共通の構造。iPhone の Safari は横向きの指定を守らず A4 縦で刷ることがある（仕入台帳 2026-10-23 実機）
+   → 什器 2 つは flex-wrap で、縦のときは上下に積まれる */
+.p-page{break-after:page; page-break-after:always;}
+.p-page:last-child{break-after:auto; page-break-after:auto;}
+.p-head{display:flex; justify-content:space-between; align-items:flex-start; gap:6mm; margin-bottom:4mm;}
+.p-head h1{font-size:16pt; margin:0 0 1mm; white-space:nowrap;}
+.p-head h1 b{font-size:20pt; margin-left:4mm;}
+.p-sub{font-size:9pt; color:#444;}
+.p-sub span{white-space:nowrap; margin-right:4mm;}
+.p-stamps{display:flex; flex-shrink:0; border:0.6pt solid #000;}
+.p-stamps div{width:20mm; text-align:center; font-size:8pt; border-left:0.6pt solid #000;}
+.p-stamps div:first-child{border-left:none;}
+.p-stamps span{display:block; border-bottom:0.6pt solid #000; padding:0.6mm 0;}
+.p-stamps i{display:block; height:14mm;}
+.p-fixtures{display:flex; flex-wrap:wrap; gap:6mm 8mm; align-items:flex-start;}
+.p-fx{flex:1 1 120mm; min-width:0; border:1.2pt solid #000; border-radius:3mm; padding:3mm;}
+.p-fx h2{font-size:11pt; margin:0 0 2mm; text-align:center; letter-spacing:.1em;}
+.p-shelf{display:grid; gap:1.5mm; margin-bottom:1.5mm;}
+.p-shelf .p-lab{font-size:8pt; color:#444; display:flex; align-items:center; justify-content:center; writing-mode:vertical-rl; border:0.5pt solid #999; border-radius:1mm; background:#f3f3f3;}
+.p-cell{border:0.6pt solid #000; border-radius:1.5mm; min-height:19mm; padding:1.5mm 2mm; position:relative; display:flex; flex-direction:column; justify-content:center; gap:0.8mm;}
+.p-cell.empty{border-style:dashed; border-color:#888;}
+.p-cell b{font-size:11pt; line-height:1.25; word-break:keep-all; overflow-wrap:anywhere;}
+.p-cell b.gone{text-decoration:line-through; color:#900;}
+.p-cell.hasq b{padding-right:11mm;}
+.p-cell .q{position:absolute; top:1mm; right:1.5mm; font-size:9.5pt; font-weight:700; border:0.6pt solid #000; border-radius:999px; padding:0 1.8mm;}
+.p-cell i{font-size:8.5pt; color:#333; font-style:normal; line-height:1.25;}
+.p-rail{height:1.6mm; background:#bbb; border-radius:0 0 1mm 1mm; margin-bottom:2.5mm;}
+.p-note{margin-top:4mm; border:0.6pt solid #000; padding:1.5mm 2mm; font-size:8.5pt; min-height:12mm;}
+.p-note span{color:#444;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+<header>
+  <div>
+    <h1>仕込み配置表</h1>
+    <div class="clock" id="clock"></div>
+    <button type="button" class="sync-chip unset" id="syncChip">同期未設定</button>
+    <button type="button" class="sync-chip" id="operatorChip">👤 未設定</button>
+  </div>
+  <div class="right" id="headerRight"></div>
+</header>
+<nav class="tabs">
+  <button data-tab="board" class="active">配置</button>
+  <button data-tab="products">商品</button>
+  <button data-tab="print">印刷</button>
+  <button data-tab="settings">設定</button>
+</nav>
+</div>
+
+<main>
+
+<!-- ========== 配置 ========== -->
+<section class="tab active" id="tab-board">
+  <div class="bar">
+    <div class="chips" id="sheetChips"></div>
+    <button type="button" class="icon-btn" id="sheetManage" title="時間帯の管理">⋯</button>
+  </div>
+  <div class="seg" id="fixtureSeg"></div>
+  <div class="move-banner" id="moveBanner" hidden>
+    <span>移動先の枠をタップしてください（入れ替わります）</span>
+    <button type="button" id="moveCancel">やめる</button>
+  </div>
+  <div class="board" id="board"></div>
+  <p class="hint">枠をタップして商品・個数・メモを入れます。左右にスワイプで什器を切り替え。什器の段数・枠数は「設定」で変えられます。</p>
+</section>
+
+<!-- ========== 商品 ========== -->
+<section class="tab" id="tab-products">
+  <div class="card">
+    <h2>商品を追加</h2>
+    <label class="field" for="npName" style="margin-top:0;">商品名</label>
+    <input type="text" id="npName" placeholder="例：お店で焼いたカレーパン" autocomplete="off">
+    <label class="field" for="npShort">表示名（枠に出す短い名前。空なら商品名）</label>
+    <input type="text" id="npShort" placeholder="例：カレーパン" autocomplete="off">
+    <label class="field" for="npCat">種類</label>
+    <select id="npCat"></select>
+    <button class="btn" id="npAdd">追加する</button>
+  </div>
+  <div class="card">
+    <h2>商品一覧 <span class="badge cat" id="productCount"></span></h2>
+    <input type="search" id="productSearch" placeholder="商品名で検索" autocomplete="off">
+    <div id="productList"></div>
+    <p class="hint" style="margin-top:10px;">行をタップで名前の修正・削除。削除した商品が置かれている枠は赤い取り消し線で残り、タップで差し替えられます。</p>
+  </div>
+</section>
+
+<!-- ========== 印刷 ========== -->
+<section class="tab" id="tab-print">
+  <div class="card">
+    <h2>印刷する時間帯</h2>
+    <div id="printSheets"></div>
+    <label class="check"><input type="checkbox" id="printCombine" checked> 什器を1ページにまとめて並べる</label>
+    <button class="btn" id="btnPrint">🖨 A4横で印刷</button>
+    <p class="hint">1時間帯＝1ページ。PDF にするなら印刷画面で「PDF として保存」。iPhone の Safari は横向きの指定を守らず A4 縦で刷ることがありますが、縦でも崩れないように作ってあります（横で刷りたいときは Mac の Chrome から）。</p>
+  </div>
+  <div class="card">
+    <h2>プレビュー</h2>
+    <div class="preview" id="printPreview"></div>
+  </div>
+</section>
+
+<!-- ========== 設定 ========== -->
+<section class="tab" id="tab-settings">
+  <div class="card">
+    <h2>クラウド同期</h2>
+    <p class="hint" id="storageNote"></p>
+    <button class="btn secondary" id="syncSettings">クラウド同期設定</button>
+  </div>
+  <div class="card">
+    <h2>操作者</h2>
+    <p class="hint">この端末で入力する人の名前。配置の変更に記録されます。</p>
+    <button class="btn secondary" id="operatorSettings">名前を選ぶ</button>
+  </div>
+  <div class="card">
+    <h2>什器</h2>
+    <p class="hint" style="margin-bottom:8px;">段ごとの枠数（1〜4）を什器の実物に合わせてください。1枚の札が2バスケットにまたがる段は枠数2にします。</p>
+    <div id="fixtureEditor"></div>
+    <button class="btn secondary" id="fixtureAdd">＋ 什器を追加</button>
+  </div>
+  <div class="card">
+    <h2>データ管理</h2>
+    <div class="data-btns">
+      <button class="btn secondary" id="jsonExport">バックアップ保存</button>
+      <button class="btn secondary" id="jsonImportBtn">バックアップ復元</button>
+    </div>
+    <input type="file" id="jsonImportFile" accept=".json,application/json" hidden>
+    <p class="hint" style="margin-top:10px;">配置・商品・什器・時間帯のすべてを JSON で保存／復元します。復元は「新しい方が勝つ」統合で、消えた配置を戻したいときにも使えます。</p>
+    <p class="meta" id="storeMeta"></p>
+  </div>
+</section>
+
+</main>
+
+<!-- 枠の編集（下から出る） -->
+<div class="modal-overlay bottom" id="cellOverlay">
+  <div class="modal sheet">
+    <div class="grab"></div>
+    <div class="cs-title" id="csTitle"></div>
+    <div class="cs-sub" id="csSub"></div>
+    <div class="cs-row">
+      <label>個数</label>
+      <div class="stepper">
+        <button type="button" id="csQtyMinus">−</button>
+        <input type="number" inputmode="numeric" id="csQty" placeholder="—" min="0" max="999">
+        <button type="button" id="csQtyPlus">＋</button>
+      </div>
+    </div>
+    <div class="cs-row">
+      <label>メモ</label>
+      <input type="text" class="memo" id="csMemo" placeholder="例：販促カードを置く／11/11まで" autocomplete="off">
+    </div>
+    <div class="cs-row" style="margin-top:14px;">
+      <input type="search" id="csSearch" placeholder="商品名で絞り込み" autocomplete="off">
+    </div>
+    <div class="chips" style="margin-top:8px;" id="csFilter"></div>
+    <div class="plist" id="csProducts"></div>
+    <div class="cs-actions">
+      <button class="btn secondary" id="csClear">空にする</button>
+      <button class="btn secondary" id="csMove">別の枠と入れ替え</button>
+      <button class="btn secondary wide" id="csNewProduct">一覧にない商品を追加して置く</button>
+      <button class="btn wide" id="csClose">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- 時間帯の管理 -->
+<div class="modal-overlay" id="sheetOverlay">
+  <div class="modal">
+    <h2>時間帯の管理</h2>
+    <p class="desc">名前を直す・順番を変える・削除する。配置を他の時間帯からコピーすることもできます。</p>
+    <div id="sheetMgmt"></div>
+    <div class="inline" style="margin-top:12px;">
+      <input type="text" id="newSheetName" placeholder="新しい時間帯の名前（例：深夜）" autocomplete="off">
+      <button class="btn secondary" id="newSheetAdd" style="width:auto;">追加</button>
+    </div>
+    <label class="field" for="copyFrom">配置をコピー</label>
+    <div class="inline">
+      <select id="copyFrom"></select>
+      <span style="font-size:13px; color:var(--sub); white-space:nowrap;">→</span>
+      <select id="copyTo"></select>
+    </div>
+    <button class="btn secondary" id="copyRun">コピーして上書き</button>
+    <button class="btn secondary" id="sheetClose">閉じる</button>
+  </div>
+</div>
+
+<!-- 商品の編集 -->
+<div class="modal-overlay" id="productOverlay">
+  <div class="modal">
+    <h2>商品の修正</h2>
+    <label class="field" for="epName" style="margin-top:0;">商品名</label>
+    <input type="text" id="epName" autocomplete="off">
+    <label class="field" for="epShort">表示名</label>
+    <input type="text" id="epShort" autocomplete="off">
+    <label class="field" for="epCat">種類</label>
+    <select id="epCat"></select>
+    <div class="msg" id="epMsg"></div>
+    <button class="btn" id="epSave">保存する</button>
+    <button class="btn secondary danger" id="epDelete">この商品を削除</button>
+    <button class="btn secondary" id="epClose">閉じる</button>
+  </div>
+</div>
+
+<!-- 同期設定 -->
+<div class="modal-overlay" id="syncOverlay">
+  <div class="modal">
+    <h2>クラウド同期設定</h2>
+    <div id="syncNoServerBox" hidden>
+      <p class="desc">クラウド同期の準備（Firebase の設定）がまだ済んでいません。管理者の方は同梱の SETUP.md の手順に沿って設定してください。設定が済むまで、データはこの端末にのみ保存されます。</p>
+    </div>
+    <div id="syncSetupForm" hidden>
+      <p class="desc">店の共有パスコードを入力すると、同じパスコードを設定した全端末で同じ配置表が共有されます。</p>
+      <label class="field" for="syncPasscode">共有パスコード（10文字以上）</label>
+      <input type="password" id="syncPasscode" autocomplete="off">
+      <div class="msg" id="syncMsg"></div>
+      <button class="btn" id="syncConnect">接続する</button>
+    </div>
+    <div id="syncConnectedBox" hidden>
+      <p class="desc">クラウド同期は<strong>有効</strong>です。配置表は同じパスコードの全端末で共有されています。</p>
+      <button class="btn secondary danger" id="syncDisconnect">この端末の同期を解除</button>
+    </div>
+    <button class="btn secondary" id="syncClose">閉じる</button>
+  </div>
+</div>
+
+<!-- 操作者 -->
+<div class="modal-overlay" id="operatorOverlay">
+  <div class="modal">
+    <h2>操作者の設定</h2>
+    <p class="desc">この端末で入力する人の名前を選んでください。配置を変えた記録にこの名前が付きます。ヘッダーの「👤 名前」からいつでも変更できます。</p>
+    <div class="op-btns" id="operatorBtns"></div>
+    <button class="btn secondary" id="operatorClose">閉じる</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+<div id="printArea"></div>
+
+<script>
+'use strict';
+
+// ===== 定数 =====
+const APP_VERSION = 1;
+const STORAGE_KEY = 'shikomi-v1';           // 配置表本体
+const OPERATOR_KEY = 'shikomi-operator-v1'; // 端末固有：操作者名
+const SYNC_KEY = 'shikomi-sync-v1';         // 端末固有：storeId
+const UI_KEY = 'shikomi-ui-v1';             // 端末固有：開いていた時間帯・什器
+// 注意: GitHub Pages では現金管理アプリ・仕入台帳と同じオリジン（takemiyu2008-ops.github.io）になり
+// localStorage を共有するため、キーはすべて shikomi- 接頭辞にする。
+
+// Firebase Realtime Database の URL（SETUP.md の手順で入れる。空なら同期なし＝この端末だけ）
+const SYNC_DB_URL = '';
+
+// 操作者（この端末で入力する人）。メンバーが変わったらここを書き換える
+const OPERATORS = ['篠原', '橋本', '小宮山', '中瀬'];
+
+// 商品の種類。什器にも種類を付け、枠をタップしたときはその什器向けの商品を先に出す
+const CATS = ['パン', 'フライヤー', 'その他'];
+const MAX_SLOTS = 4;
+const MAX_SHELVES = 8;
+const SEED_AT = 1; // 初期データの更新時刻。どの端末の編集（Date.now()）よりも古いので、必ず編集が勝つ
+
+// ===== 初期データ（2026-11-08 の什器写真から） =====
+const SEED = {
+  fixtures: [
+    { id: 'fx-bread', name: 'パン什器', cat: 'パン', order: 1, shelves: [2, 2, 3, 4] },
+    { id: 'fx-fryer', name: 'フライヤー什器', cat: 'フライヤー', order: 2, shelves: [4, 2, 2, 4] },
+  ],
+  sheets: [
+    { id: 'sh-am', name: '朝', order: 1 },
+    { id: 'sh-noon', name: '昼', order: 2 },
+    { id: 'sh-pm', name: '夕', order: 3 },
+  ],
+  products: [
+    ['p-b01', 'お店で焼いたカリッもちっバター餅', 'バター餅', 'パン'],
+    ['p-b02', 'お店で焼いたカリッじゅワッサン', 'カリッじゅワッサン', 'パン'],
+    ['p-b03', 'お店で焼いたチョコクロワッサン', 'チョコクロワッサン', 'パン'],
+    ['p-b04', 'お店で焼いたサクッとふわっふわメロンパン', 'メロンパン', 'パン'],
+    ['p-b05', 'お店で焼いたアップルパイ', 'アップルパイ', 'パン'],
+    ['p-b06', 'お店で焼いた抹茶クッキー', '抹茶クッキー', 'パン'],
+    ['p-b07', 'お店で焼いたチョコクッキー', 'チョコクッキー', 'パン'],
+    ['p-b08', 'お店で焼いたソーセージフランス', 'ソーセージフランス', 'パン'],
+    ['p-b09', 'お店で焼いた明太フランス', '明太フランス', 'パン'],
+    ['p-b10', '北海道産コーンのマカロニグラタンパン', 'コーングラタンパン', 'パン'],
+    ['p-b11', 'お店で揚げたカレーパン', 'カレーパン', 'パン'],
+    ['p-f01', 'からあげ棒', 'からあげ棒', 'フライヤー'],
+    ['p-f02', 'アメリカンドッグ', 'アメリカンドッグ', 'フライヤー'],
+    ['p-f03', 'BIGポークフランク', 'BIGポークフランク', 'フライヤー'],
+    ['p-f04', 'おかしなチキン（とんがりコーン焼とうもろこし風）', 'おかしなチキン', 'フライヤー'],
+    ['p-f05', 'ザクチキ（魅惑のうま辛）', 'ザクチキ', 'フライヤー'],
+    ['p-f06', '揚げ鶏', '揚げ鶏', 'フライヤー'],
+    ['p-f07', 'ななチキ', 'ななチキ', 'フライヤー'],
+    ['p-f08', 'ほくじゃが牛肉コロッケ（塩胡椒）', 'ほくじゃが牛肉コロッケ', 'フライヤー'],
+    ['p-f09', 'じゅわっと香り立つ若鶏のからあげ（もも）3個入り', 'からあげ3個入り', 'フライヤー'],
+    ['p-f10', 'きのこ香るとろ〜りコロッケ（白トリュフ風味）', 'きのこコロッケ', 'フライヤー'],
+    ['p-f11', 'ささみ揚げ（梅しそ）', 'ささみ揚げ（梅しそ）', 'フライヤー'],
+    ['p-f12', '五目春巻', '五目春巻', 'フライヤー'],
+  ],
+  // 「朝」に写真どおりの配置を入れておく。[什器, 段(0始まり), 枠(0始まり), 商品]
+  cells: [
+    ['fx-bread', 0, 0, 'p-b01'], ['fx-bread', 0, 1, 'p-b02'],
+    ['fx-bread', 1, 0, 'p-b03'], ['fx-bread', 1, 1, 'p-b04'],
+    ['fx-bread', 2, 0, 'p-b05'], ['fx-bread', 2, 1, 'p-b06'], ['fx-bread', 2, 2, 'p-b07'],
+    ['fx-bread', 3, 0, 'p-b08'], ['fx-bread', 3, 1, 'p-b09'], ['fx-bread', 3, 2, 'p-b10'], ['fx-bread', 3, 3, 'p-b11'],
+    ['fx-fryer', 0, 0, 'p-f01'], ['fx-fryer', 0, 1, 'p-f02'], ['fx-fryer', 0, 2, 'p-f03'], ['fx-fryer', 0, 3, 'p-f04'],
+    ['fx-fryer', 1, 0, 'p-f05'], ['fx-fryer', 1, 1, 'p-f06'],
+    ['fx-fryer', 2, 0, 'p-f07'], ['fx-fryer', 2, 1, 'p-f08'],
+    ['fx-fryer', 3, 0, 'p-f09'], ['fx-fryer', 3, 1, 'p-f10'], ['fx-fryer', 3, 2, 'p-f11'], ['fx-fryer', 3, 3, 'p-f12'],
+  ],
+};
+
+function seedStore() {
+  const s = emptyStore();
+  SEED.fixtures.forEach(f => { s.fixtures[f.id] = { id: f.id, name: f.name, cat: f.cat, order: f.order, shelves: f.shelves.map(n => ({ slots: n })), at: SEED_AT, by: '', del: false }; });
+  SEED.sheets.forEach(sh => { s.sheets[sh.id] = { id: sh.id, name: sh.name, order: sh.order, at: SEED_AT, by: '', del: false }; });
+  SEED.products.forEach(([id, name, short, cat]) => { s.products[id] = { id, name, short, cat, at: SEED_AT, by: '', del: false }; });
+  SEED.cells.forEach(([fid, r, c, pid]) => { s.cells[cellKey('sh-am', fid, r, c)] = { pid, qty: null, memo: '', at: SEED_AT, by: '' }; });
+  return s;
+}
+
+// ===== データモデル（状態スナップショット型。項目ごとに at を持ち、統合は新しい方が勝つ） =====
+function emptyStore() { return { version: APP_VERSION, fixtures: {}, products: {}, sheets: {}, cells: {} }; }
+function cellKey(sid, fid, r, c) { return `${sid}:${fid}:${r}:${c}`; }
+
+// RTDB は空オブジェクト・空文字・null を保存しないため、欠落を補完してから使う
+function normalizeStore(s) {
+  if (!s || typeof s !== 'object') return null;
+  const out = emptyStore();
+  const obj = v => (v && typeof v === 'object') ? v : {};
+  const str = v => typeof v === 'string' ? v : '';
+  const num = (v, d) => Number.isFinite(Number(v)) ? Number(v) : d;
+  Object.entries(obj(s.fixtures)).forEach(([id, f]) => {
+    if (!f || typeof f !== 'object') return;
+    let shelves = Array.isArray(f.shelves) ? f.shelves.map(x => ({ slots: Math.min(MAX_SLOTS, Math.max(1, num(x && x.slots, 1))) })) : [];
+    if (!shelves.length) shelves = [{ slots: 2 }];
+    out.fixtures[id] = { id, name: str(f.name), cat: str(f.cat), order: num(f.order, 0), shelves, at: num(f.at, 0), by: str(f.by), del: !!f.del };
+  });
+  Object.entries(obj(s.products)).forEach(([id, p]) => {
+    if (!p || typeof p !== 'object') return;
+    out.products[id] = { id, name: str(p.name), short: str(p.short), cat: str(p.cat), at: num(p.at, 0), by: str(p.by), del: !!p.del };
+  });
+  Object.entries(obj(s.sheets)).forEach(([id, sh]) => {
+    if (!sh || typeof sh !== 'object') return;
+    out.sheets[id] = { id, name: str(sh.name), order: num(sh.order, 0), at: num(sh.at, 0), by: str(sh.by), del: !!sh.del };
+  });
+  Object.entries(obj(s.cells)).forEach(([key, c]) => {
+    if (!c || typeof c !== 'object') return;
+    if (key.split(':').length !== 4) return;
+    const q = (c.qty === null || c.qty === undefined || c.qty === '') ? null : num(c.qty, null);
+    out.cells[key] = { pid: typeof c.pid === 'string' && c.pid ? c.pid : null, qty: q, memo: str(c.memo), at: num(c.at, 0), by: str(c.by) };
+  });
+  return out;
+}
+
+// 統合: 4つの表それぞれで、キーごとに at が大きい方を採る（同時刻なら相手側）。冪等・順序非依存
+function mergeStore(local, remote) {
+  if (!remote) return local;
+  if (!local) return remote;
+  const out = emptyStore();
+  ['fixtures', 'products', 'sheets', 'cells'].forEach(k => {
+    const keys = new Set([...Object.keys(local[k]), ...Object.keys(remote[k])]);
+    keys.forEach(id => {
+      const a = local[k][id], b = remote[k][id];
+      out[k][id] = (!a) ? b : (!b) ? a : (a.at > b.at ? a : b);
+    });
+  });
+  return out;
+}
+
+// 内容の比較用。キー順を揃えて文字列にする
+function stableJson(v) {
+  if (Array.isArray(v)) return '[' + v.map(stableJson).join(',') + ']';
+  if (v && typeof v === 'object') return '{' + Object.keys(v).sort().map(k => JSON.stringify(k) + ':' + stableJson(v[k])).join(',') + '}';
+  return JSON.stringify(v);
+}
+function storeSig(s) { return s ? stableJson(normalizeStore(s)) : 'null'; }
+
+function load() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return seedStore();
+    return normalizeStore(JSON.parse(raw)) || seedStore();
+  } catch (e) {
+    return seedStore();
+  }
+}
+function saveLocalOnly() { localStorage.setItem(STORAGE_KEY, JSON.stringify(store)); }
+function save() { saveLocalOnly(); scheduleSync(); }
+
+let store = load();
+let operator = loadOperator();
+let ui = loadUi();
+const move = { from: null }; // 入れ替え中の枠 {sid,fid,r,c}
+
+// ===== ユーティリティ =====
+const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
+const pad2 = n => String(n).padStart(2, '0');
+function newUid() {
+  const rand = (crypto.randomUUID ? crypto.randomUUID().slice(0, 8) : Math.random().toString(36).slice(2, 10));
+  return Date.now().toString(36) + '-' + rand;
+}
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => el.classList.remove('show'), 2400);
+}
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function fmtDate(d) { return `${d.getFullYear()}/${pad2(d.getMonth() + 1)}/${pad2(d.getDate())}（${WEEKDAYS[d.getDay()]}）`; }
+function fmtWhen(ts) {
+  if (!ts || ts <= SEED_AT) return '';
+  const d = new Date(ts);
+  return `${d.getMonth() + 1}/${d.getDate()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
+function stamp(obj) { obj.at = Date.now(); obj.by = operator || ''; return obj; }
+
+// 生きている項目を並び順で
+function liveList(map, sortKey) {
+  return Object.values(map).filter(x => !x.del).sort((a, b) =>
+    (sortKey === 'name') ? (CATS.indexOf(a.cat) - CATS.indexOf(b.cat)) || a.name.localeCompare(b.name, 'ja')
+      : (a.order - b.order) || a.at - b.at);
+}
+const liveFixtures = () => liveList(store.fixtures, 'order');
+const liveSheets = () => liveList(store.sheets, 'order');
+const liveProducts = () => liveList(store.products, 'name');
+function productLabel(pid) {
+  const p = store.products[pid];
+  if (!p) return { text: '（不明な商品）', gone: true };
+  return { text: p.short || p.name, gone: !!p.del, full: p.name };
+}
+function getCell(sid, fid, r, c) { return store.cells[cellKey(sid, fid, r, c)] || null; }
+function setCell(sid, fid, r, c, data) {
+  const key = cellKey(sid, fid, r, c);
+  const cur = store.cells[key] || { pid: null, qty: null, memo: '' };
+  store.cells[key] = stamp({ pid: data.pid === undefined ? cur.pid : data.pid, qty: data.qty === undefined ? cur.qty : data.qty, memo: data.memo === undefined ? cur.memo : data.memo });
+  save();
+}
+// 什器の中で埋まっている枠の数（商品あり）
+function countPlacements(pred) {
+  return Object.entries(store.cells).filter(([key, c]) => {
+    if (!c.pid) return false;
+    const [sid, fid, r, cc] = key.split(':');
+    return pred(sid, fid, Number(r), Number(cc), c);
+  }).length;
+}
+function latestChange() {
+  let best = null;
+  ['fixtures', 'products', 'sheets', 'cells'].forEach(k => Object.values(store[k]).forEach(x => { if (x.at > SEED_AT && (!best || x.at > best.at)) best = x; }));
+  return best;
+}
+
+// ===== 端末固有の設定 =====
+function loadOperator() { const v = localStorage.getItem(OPERATOR_KEY); return (v && OPERATORS.includes(v)) ? v : ''; }
+function setOperator(name) { operator = name; localStorage.setItem(OPERATOR_KEY, name); renderOperatorChip(); }
+function renderOperatorChip() { document.getElementById('operatorChip').textContent = '👤 ' + (operator || '未設定'); }
+function openOperatorDialog() {
+  const box = document.getElementById('operatorBtns');
+  box.innerHTML = '';
+  OPERATORS.forEach(name => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'btn secondary' + (name === operator ? ' selected' : '');
+    btn.textContent = name;
+    btn.addEventListener('click', () => { setOperator(name); closeOperatorDialog(); toast(name + ' さんとして記録します'); });
+    box.appendChild(btn);
+  });
+  document.getElementById('operatorOverlay').classList.add('show');
+}
+function closeOperatorDialog() { document.getElementById('operatorOverlay').classList.remove('show'); }
+
+function loadUi() {
+  try { const u = JSON.parse(localStorage.getItem(UI_KEY)); if (u && typeof u === 'object') return { sheet: u.sheet || null, fixture: u.fixture || null }; } catch (e) {}
+  return { sheet: null, fixture: null };
+}
+function saveUi() { localStorage.setItem(UI_KEY, JSON.stringify({ sheet: ui.sheet, fixture: ui.fixture })); }
+function currentSheet() {
+  const list = liveSheets();
+  if (!list.length) return null;
+  return list.find(s => s.id === ui.sheet) || list[0];
+}
+function currentFixture() {
+  const list = liveFixtures();
+  if (!list.length) return null;
+  return list.find(f => f.id === ui.fixture) || list[0];
+}
+
+// ===== 配置タブ =====
+function renderSheetChips() {
+  const box = document.getElementById('sheetChips');
+  const cur = currentSheet();
+  box.innerHTML = '';
+  liveSheets().forEach(sh => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = sh.name || '（無題）';
+    b.className = cur && sh.id === cur.id ? 'active' : '';
+    b.dataset.sid = sh.id;
+    b.addEventListener('click', () => { ui.sheet = sh.id; saveUi(); cancelMove(); renderBoardTab(); });
+    box.appendChild(b);
+  });
+  if (!liveSheets().length) box.innerHTML = '<span class="hint">時間帯がありません。右の「⋯」から追加してください</span>';
+}
+function renderFixtureSeg() {
+  const box = document.getElementById('fixtureSeg');
+  const cur = currentFixture();
+  box.innerHTML = '';
+  liveFixtures().forEach(f => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = f.name || '（無題の什器）';
+    b.className = cur && f.id === cur.id ? 'active' : '';
+    b.dataset.fid = f.id;
+    b.addEventListener('click', () => { ui.fixture = f.id; saveUi(); cancelMove(); renderBoardTab(); });
+    box.appendChild(b);
+  });
+  box.hidden = liveFixtures().length < 2;
+}
+function cellInner(c) {
+  if (!c || !c.pid) return '<span>＋</span>';
+  const lab = productLabel(c.pid);
+  let h = `<span class="nm${lab.gone ? ' gone' : ''}">${escapeHtml(lab.text)}</span>`;
+  if (c.qty !== null && c.qty !== undefined) h += `<span class="qty">${escapeHtml(c.qty)}個</span>`;
+  if (c.memo) h += `<span class="memo">${escapeHtml(c.memo)}</span>`;
+  return h;
+}
+function renderBoard() {
+  const board = document.getElementById('board');
+  const sh = currentSheet(), fx = currentFixture();
+  board.classList.toggle('move-mode', !!move.from);
+  if (!sh || !fx) {
+    board.innerHTML = `<p class="hint" style="padding:20px 8px; text-align:center;">${!fx ? '什器がありません。「設定」で追加してください。' : '時間帯がありません。'}</p>`;
+    return;
+  }
+  let h = `<div class="fx-title">▼ ${escapeHtml(fx.name)}（上から順）</div>`;
+  fx.shelves.forEach((shelf, r) => {
+    h += `<div class="shelf"><div class="cells" style="grid-template-columns:repeat(${shelf.slots},1fr)">`;
+    for (let c = 0; c < shelf.slots; c++) {
+      const cell = getCell(sh.id, fx.id, r, c);
+      const empty = !cell || !cell.pid;
+      const moving = move.from && move.from.r === r && move.from.c === c;
+      const hasq = cell && cell.qty !== null && cell.qty !== undefined;
+      h += `<button type="button" class="cell${empty ? ' empty' : ''}${hasq ? ' hasq' : ''}${moving ? ' moving' : ''}" data-r="${r}" data-c="${c}" aria-label="${r + 1}段目 ${c + 1}番目">${cellInner(cell)}</button>`;
+    }
+    h += `</div><div class="rail"><span>${r + 1}段目</span></div></div>`;
+  });
+  board.innerHTML = h;
+  board.querySelectorAll('.cell').forEach(btn => btn.addEventListener('click', () => onCellTap(Number(btn.dataset.r), Number(btn.dataset.c))));
+}
+function renderBoardTab() { renderSheetChips(); renderFixtureSeg(); renderBoard(); renderHeader(); }
+
+function onCellTap(r, c) {
+  const sh = currentSheet(), fx = currentFixture();
+  if (!sh || !fx) return;
+  if (move.from) {
+    const a = move.from;
+    if (a.r === r && a.c === c) { cancelMove(); return; }
+    const ca = getCell(sh.id, fx.id, a.r, a.c), cb = getCell(sh.id, fx.id, r, c);
+    const da = ca ? { pid: ca.pid, qty: ca.qty, memo: ca.memo } : { pid: null, qty: null, memo: '' };
+    const db = cb ? { pid: cb.pid, qty: cb.qty, memo: cb.memo } : { pid: null, qty: null, memo: '' };
+    setCell(sh.id, fx.id, r, c, da);
+    setCell(sh.id, fx.id, a.r, a.c, db);
+    cancelMove();
+    toast('入れ替えました');
+    return;
+  }
+  openCellSheet(r, c);
+}
+function startMove(r, c) {
+  move.from = { r, c };
+  document.getElementById('moveBanner').hidden = false;
+  renderBoard();
+}
+function cancelMove() {
+  move.from = null;
+  document.getElementById('moveBanner').hidden = true;
+  renderBoard();
+}
+
+// 左右スワイプで什器を切り替える（現金管理アプリの initSwipe と同じ考え方: 端 24px は iOS の戻る操作に譲る・方向を 10px で確定）
+function initSwipe() {
+  const el = document.getElementById('board');
+  let sx = 0, sy = 0, lock = null, active = false;
+  el.addEventListener('touchstart', e => {
+    const t = e.touches[0];
+    if (t.clientX < 24 || t.clientX > innerWidth - 24) { active = false; return; }
+    sx = t.clientX; sy = t.clientY; lock = null; active = true;
+  }, { passive: true });
+  el.addEventListener('touchmove', e => {
+    if (!active || lock) return;
+    const t = e.touches[0];
+    const dx = t.clientX - sx, dy = t.clientY - sy;
+    if (Math.abs(dx) > 10 || Math.abs(dy) > 10) lock = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+  }, { passive: true });
+  el.addEventListener('touchend', e => {
+    if (!active || lock !== 'x') return;
+    const dx = e.changedTouches[0].clientX - sx;
+    if (Math.abs(dx) < 60) return;
+    const list = liveFixtures(); const cur = currentFixture();
+    if (!cur || list.length < 2) return;
+    const i = list.findIndex(f => f.id === cur.id);
+    const next = list[(i + (dx < 0 ? 1 : -1) + list.length) % list.length];
+    ui.fixture = next.id; saveUi(); cancelMove(); renderBoardTab();
+  }, { passive: true });
+}
+
+// ===== 枠シート =====
+const cs = { r: 0, c: 0, filter: 'auto', q: '' };
+function openCellSheet(r, c) {
+  cs.r = r; cs.c = c; cs.q = ''; cs.filter = 'auto';
+  document.getElementById('csSearch').value = '';
+  renderCellSheet();
+  document.getElementById('cellOverlay').classList.add('show');
+}
+function closeCellSheet() { document.getElementById('cellOverlay').classList.remove('show'); renderBoard(); }
+function csCell() { const sh = currentSheet(), fx = currentFixture(); return getCell(sh.id, fx.id, cs.r, cs.c); }
+function csSet(data) { const sh = currentSheet(), fx = currentFixture(); setCell(sh.id, fx.id, cs.r, cs.c, data); }
+function renderCellSheet() {
+  const sh = currentSheet(), fx = currentFixture();
+  if (!sh || !fx) return;
+  const cell = csCell();
+  const lab = cell && cell.pid ? productLabel(cell.pid) : null;
+  document.getElementById('csTitle').textContent = lab ? (lab.gone ? '（削除済み）' : '') + lab.text : '空き枠';
+  document.getElementById('csSub').textContent = `${sh.name}　${fx.name}　${cs.r + 1}段目・左から${cs.c + 1}番目` + (lab && lab.full && lab.full !== lab.text ? `　／ ${lab.full}` : '');
+  const qty = document.getElementById('csQty');
+  if (document.activeElement !== qty) qty.value = cell && cell.qty !== null && cell.qty !== undefined ? cell.qty : '';
+  const memo = document.getElementById('csMemo');
+  if (document.activeElement !== memo) memo.value = cell ? cell.memo : '';
+  // 絞り込みチップ
+  const fbox = document.getElementById('csFilter');
+  fbox.innerHTML = '';
+  [['auto', fx.cat ? `${fx.cat}向け` : 'この什器向け'], ['all', 'すべて']].forEach(([k, label]) => {
+    if (k === 'auto' && !fx.cat) return;
+    const b = document.createElement('button'); b.type = 'button'; b.textContent = label;
+    b.className = cs.filter === k ? 'active' : '';
+    b.addEventListener('click', () => { cs.filter = k; renderCellSheet(); });
+    fbox.appendChild(b);
+  });
+  // 商品一覧
+  const list = document.getElementById('csProducts');
+  const q = cs.q.trim().toLowerCase();
+  let items = liveProducts();
+  if (cs.filter === 'auto' && fx.cat) items = items.filter(p => p.cat === fx.cat || p.cat === 'その他' || !p.cat);
+  if (q) items = items.filter(p => (p.name + ' ' + p.short).toLowerCase().includes(q));
+  list.innerHTML = '';
+  if (!items.length) list.innerHTML = `<div class="none">${q ? '見つかりません。' : '商品がありません。'}下の「一覧にない商品を追加して置く」から登録できます</div>`;
+  items.forEach(p => {
+    const b = document.createElement('button'); b.type = 'button';
+    b.className = cell && cell.pid === p.id ? 'selected' : '';
+    b.innerHTML = escapeHtml(p.short || p.name) + (p.short && p.short !== p.name ? `<small>${escapeHtml(p.name)}</small>` : '');
+    b.addEventListener('click', () => { csSet({ pid: p.id }); renderCellSheet(); renderBoard(); });
+    list.appendChild(b);
+  });
+  document.getElementById('csClear').disabled = !(cell && (cell.pid || cell.memo || cell.qty !== null));
+}
+function csQtyChange(delta) {
+  const cell = csCell();
+  const cur = cell && cell.qty !== null && cell.qty !== undefined ? Number(cell.qty) : 0;
+  const next = Math.max(0, Math.min(999, cur + delta));
+  csSet({ qty: next });
+  renderCellSheet(); renderBoard();
+}
+
+// ===== 時間帯の管理 =====
+function openSheetDialog() { renderSheetMgmt(); document.getElementById('sheetOverlay').classList.add('show'); }
+function closeSheetDialog() { document.getElementById('sheetOverlay').classList.remove('show'); renderBoardTab(); renderPrintTab(); }
+function renderSheetMgmt() {
+  const box = document.getElementById('sheetMgmt');
+  const list = liveSheets();
+  box.innerHTML = '';
+  list.forEach((sh, i) => {
+    const row = document.createElement('div'); row.className = 'mgmt-row';
+    const inp = document.createElement('input'); inp.type = 'text'; inp.value = sh.name; inp.placeholder = '名前';
+    inp.addEventListener('change', () => { const v = inp.value.trim(); if (!v) { inp.value = sh.name; return; } sh.name = v; stamp(sh); save(); renderBoardTab(); });
+    const up = document.createElement('button'); up.type = 'button'; up.className = 'icon-btn'; up.textContent = '↑'; up.disabled = i === 0;
+    up.addEventListener('click', () => { swapOrder(list[i - 1], sh); renderSheetMgmt(); });
+    const dn = document.createElement('button'); dn.type = 'button'; dn.className = 'icon-btn'; dn.textContent = '↓'; dn.disabled = i === list.length - 1;
+    dn.addEventListener('click', () => { swapOrder(sh, list[i + 1]); renderSheetMgmt(); });
+    const rm = document.createElement('button'); rm.type = 'button'; rm.className = 'icon-btn'; rm.textContent = '🗑'; rm.style.color = 'var(--out)';
+    rm.addEventListener('click', () => {
+      const n = countPlacements(sid => sid === sh.id);
+      if (!confirm(`時間帯「${sh.name}」を削除します${n ? `（置かれている商品 ${n} 枠も消えます）` : ''}。よろしいですか？`)) return;
+      sh.del = true; stamp(sh); save();
+      if (ui.sheet === sh.id) ui.sheet = null;
+      renderSheetMgmt(); toast('削除しました');
+    });
+    row.append(inp, up, dn, rm);
+    box.appendChild(row);
+  });
+  if (!list.length) box.innerHTML = '<p class="hint">時間帯がありません</p>';
+  const from = document.getElementById('copyFrom'), to = document.getElementById('copyTo');
+  from.innerHTML = ''; to.innerHTML = '';
+  list.forEach(sh => { from.add(new Option(sh.name, sh.id)); to.add(new Option(sh.name, sh.id)); });
+  const cur = currentSheet();
+  if (cur) { to.value = cur.id; const other = list.find(s => s.id !== cur.id); if (other) from.value = other.id; }
+  document.getElementById('copyRun').disabled = list.length < 2;
+}
+function swapOrder(a, b) {
+  // order が同じ（初期値など）でも入れ替わるよう、並び全体を振り直す
+  const list = liveSheets();
+  const ia = list.indexOf(a), ib = list.indexOf(b);
+  list[ia] = b; list[ib] = a;
+  list.forEach((s, i) => { if (s.order !== i + 1) { s.order = i + 1; stamp(s); } });
+  save();
+}
+function addSheet(name) {
+  const id = 'sh-' + newUid();
+  const order = Math.max(0, ...liveSheets().map(s => s.order)) + 1;
+  store.sheets[id] = stamp({ id, name, order, del: false });
+  save();
+  return id;
+}
+function copySheet(fromId, toId) {
+  if (fromId === toId) { toast('コピー元とコピー先が同じです'); return; }
+  const from = store.sheets[fromId], to = store.sheets[toId];
+  if (!from || !to) return;
+  if (!confirm(`「${from.name}」の配置を「${to.name}」にコピーして上書きします。よろしいですか？`)) return;
+  liveFixtures().forEach(fx => fx.shelves.forEach((shelf, r) => {
+    for (let c = 0; c < shelf.slots; c++) {
+      const src = getCell(fromId, fx.id, r, c);
+      const dst = getCell(toId, fx.id, r, c);
+      const data = src ? { pid: src.pid, qty: src.qty, memo: src.memo } : { pid: null, qty: null, memo: '' };
+      const same = dst ? (dst.pid === data.pid && dst.qty === data.qty && dst.memo === data.memo) : (!data.pid && data.qty === null && !data.memo);
+      if (!same) setCell(toId, fx.id, r, c, data);
+    }
+  }));
+  toast(`「${to.name}」に配置をコピーしました`);
+  ui.sheet = toId; saveUi();
+  closeSheetDialog();
+}
+
+// ===== 商品タブ =====
+let productQuery = '';
+let editingPid = null;
+function fillCatSelect(sel, value) {
+  sel.innerHTML = '';
+  CATS.forEach(c => sel.add(new Option(c, c)));
+  if (value && !CATS.includes(value)) sel.add(new Option(value, value));
+  sel.value = value || CATS[0];
+}
+function renderProducts() {
+  const box = document.getElementById('productList');
+  const q = productQuery.trim().toLowerCase();
+  const items = liveProducts().filter(p => !q || (p.name + ' ' + p.short).toLowerCase().includes(q));
+  document.getElementById('productCount').textContent = liveProducts().length + ' 品';
+  box.innerHTML = '';
+  let lastCat = null;
+  items.forEach(p => {
+    if (p.cat !== lastCat) { lastCat = p.cat; const t = document.createElement('div'); t.className = 'group-title'; t.textContent = p.cat || '種類なし'; box.appendChild(t); }
+    const n = countPlacements((sid, fid, r, c, cell) => cell.pid === p.id && store.sheets[sid] && !store.sheets[sid].del);
+    const row = document.createElement('div'); row.className = 'row';
+    row.innerHTML = `<div class="t"><div class="n">${escapeHtml(p.short || p.name)}</div><div class="s">${escapeHtml(p.short && p.short !== p.name ? p.name : '')}</div></div><div class="side">${n ? n + ' 枠に配置' : ''}</div>`;
+    row.addEventListener('click', () => openProductDialog(p.id));
+    box.appendChild(row);
+  });
+  if (!items.length) box.innerHTML = '<p class="hint" style="padding:10px 2px;">該当する商品がありません</p>';
+}
+function addProduct(name, short, cat) {
+  name = name.trim(); short = short.trim();
+  if (!name) { toast('商品名を入れてください'); return null; }
+  const dup = liveProducts().find(p => p.name === name);
+  if (dup) { toast('同じ商品名が既にあります'); return dup.id; }
+  const id = 'p-' + newUid();
+  store.products[id] = stamp({ id, name, short, cat, del: false });
+  save();
+  toast('追加しました: ' + (short || name));
+  return id;
+}
+function openProductDialog(pid) {
+  const p = store.products[pid]; if (!p) return;
+  editingPid = pid;
+  document.getElementById('epName').value = p.name;
+  document.getElementById('epShort').value = p.short;
+  fillCatSelect(document.getElementById('epCat'), p.cat);
+  const n = countPlacements((sid, fid, r, c, cell) => cell.pid === pid && store.sheets[sid] && !store.sheets[sid].del);
+  document.getElementById('epMsg').textContent = n ? `現在 ${n} 枠に置かれています` : '';
+  document.getElementById('epMsg').style.color = 'var(--sub)';
+  document.getElementById('productOverlay').classList.add('show');
+}
+function closeProductDialog() { editingPid = null; document.getElementById('productOverlay').classList.remove('show'); }
+
+// ===== 什器の編集（設定） =====
+function renderFixtureEditor() {
+  const box = document.getElementById('fixtureEditor');
+  const list = liveFixtures();
+  box.innerHTML = '';
+  list.forEach((fx, i) => {
+    const card = document.createElement('div'); card.className = 'fx-card';
+    card.style.cssText = 'border:1px solid var(--line); border-radius:10px; padding:10px; margin-bottom:10px;';
+    const head = document.createElement('div'); head.className = 'head';
+    const name = document.createElement('input'); name.type = 'text'; name.value = fx.name; name.placeholder = '什器の名前';
+    name.addEventListener('change', () => { const v = name.value.trim(); if (!v) { name.value = fx.name; return; } fx.name = v; stamp(fx); save(); renderBoardTab(); renderPrintTab(); });
+    const cat = document.createElement('select'); fillCatSelect(cat, fx.cat); cat.title = 'この什器向けの商品の種類';
+    cat.addEventListener('change', () => { fx.cat = cat.value; stamp(fx); save(); });
+    const up = document.createElement('button'); up.type = 'button'; up.className = 'icon-btn'; up.textContent = '↑'; up.disabled = i === 0;
+    up.addEventListener('click', () => { swapFixtureOrder(list[i - 1], fx); renderFixtureEditor(); renderBoardTab(); });
+    const dn = document.createElement('button'); dn.type = 'button'; dn.className = 'icon-btn'; dn.textContent = '↓'; dn.disabled = i === list.length - 1;
+    dn.addEventListener('click', () => { swapFixtureOrder(fx, list[i + 1]); renderFixtureEditor(); renderBoardTab(); });
+    head.append(name, cat, up, dn);
+    card.appendChild(head);
+    fx.shelves.forEach((shelf, r) => {
+      const row = document.createElement('div'); row.className = 'shelf-row';
+      row.innerHTML = `<span class="lab">${r + 1}段目</span>`;
+      const st = document.createElement('div'); st.className = 'stepper';
+      const minus = document.createElement('button'); minus.type = 'button'; minus.textContent = '−'; minus.disabled = shelf.slots <= 1;
+      const inp = document.createElement('input'); inp.type = 'text'; inp.readOnly = true; inp.value = shelf.slots + ' 枠'; inp.tabIndex = -1;
+      const plus = document.createElement('button'); plus.type = 'button'; plus.textContent = '＋'; plus.disabled = shelf.slots >= MAX_SLOTS;
+      minus.addEventListener('click', () => setShelfSlots(fx, r, shelf.slots - 1));
+      plus.addEventListener('click', () => setShelfSlots(fx, r, shelf.slots + 1));
+      st.append(minus, inp, plus);
+      row.appendChild(st);
+      if (fx.shelves.length > 1) {
+        const rm = document.createElement('button'); rm.type = 'button'; rm.className = 'rm'; rm.textContent = '×'; rm.title = 'この段を削除';
+        rm.addEventListener('click', () => removeShelf(fx, r));
+        row.appendChild(rm);
+      }
+      card.appendChild(row);
+    });
+    const foot = document.createElement('div'); foot.className = 'data-btns'; foot.style.marginTop = '10px';
+    const addShelf = document.createElement('button'); addShelf.type = 'button'; addShelf.className = 'btn secondary'; addShelf.textContent = '＋ 段を追加（最下段）'; addShelf.disabled = fx.shelves.length >= MAX_SHELVES;
+    addShelf.addEventListener('click', () => { fx.shelves.push({ slots: fx.shelves[fx.shelves.length - 1].slots }); stamp(fx); save(); renderFixtureEditor(); renderBoardTab(); renderPrintTab(); });
+    const del = document.createElement('button'); del.type = 'button'; del.className = 'btn secondary danger'; del.textContent = 'この什器を削除';
+    del.addEventListener('click', () => {
+      const n = countPlacements((sid, fid) => fid === fx.id);
+      if (!confirm(`什器「${fx.name}」を削除します${n ? `（置かれている商品 ${n} 枠も消えます）` : ''}。よろしいですか？`)) return;
+      fx.del = true; stamp(fx); save();
+      if (ui.fixture === fx.id) ui.fixture = null;
+      renderFixtureEditor(); renderBoardTab(); renderPrintTab(); toast('削除しました');
+    });
+    foot.append(addShelf, del);
+    card.appendChild(foot);
+    box.appendChild(card);
+  });
+  if (!list.length) box.innerHTML = '<p class="hint">什器がありません。「＋ 什器を追加」で作ってください</p>';
+}
+function swapFixtureOrder(a, b) {
+  const list = liveFixtures();
+  const ia = list.indexOf(a), ib = list.indexOf(b);
+  list[ia] = b; list[ib] = a;
+  list.forEach((f, i) => { if (f.order !== i + 1) { f.order = i + 1; stamp(f); } });
+  save();
+}
+// 枠数を変える。減らすときにはみ出す枠に商品があれば確認してから消す
+function setShelfSlots(fx, r, n) {
+  n = Math.max(1, Math.min(MAX_SLOTS, n));
+  if (n < fx.shelves[r].slots) {
+    const lost = countPlacements((sid, fid, rr, c) => fid === fx.id && rr === r && c >= n && store.sheets[sid] && !store.sheets[sid].del);
+    if (lost && !confirm(`${r + 1}段目の枠を ${n} に減らすと、はみ出す ${lost} 枠の商品が消えます。よろしいですか？`)) return;
+    clearCells((sid, fid, rr, c) => fid === fx.id && rr === r && c >= n);
+  }
+  fx.shelves[r].slots = n; stamp(fx); save();
+  renderFixtureEditor(); renderBoardTab(); renderPrintTab();
+}
+function removeShelf(fx, r) {
+  const lost = countPlacements((sid, fid, rr) => fid === fx.id && rr === r && store.sheets[sid] && !store.sheets[sid].del);
+  if (!confirm(`${r + 1}段目を削除します${lost ? `（置かれている商品 ${lost} 枠も消えます）` : ''}。下の段は繰り上がります。よろしいですか？`)) return;
+  // 下の段の配置を 1 段ずつ上へ移す
+  liveSheets().forEach(sh => {
+    for (let rr = r; rr < fx.shelves.length; rr++) {
+      for (let c = 0; c < MAX_SLOTS; c++) {
+        const below = rr + 1 < fx.shelves.length ? getCell(sh.id, fx.id, rr + 1, c) : null;
+        const cur = getCell(sh.id, fx.id, rr, c);
+        const data = below ? { pid: below.pid, qty: below.qty, memo: below.memo } : { pid: null, qty: null, memo: '' };
+        const same = cur ? (cur.pid === data.pid && cur.qty === data.qty && cur.memo === data.memo) : (!data.pid && data.qty === null && !data.memo);
+        if (!same) setCell(sh.id, fx.id, rr, c, data);
+      }
+    }
+  });
+  fx.shelves.splice(r, 1); stamp(fx); save();
+  renderFixtureEditor(); renderBoardTab(); renderPrintTab();
+}
+function clearCells(pred) {
+  Object.entries(store.cells).forEach(([key, c]) => {
+    const [sid, fid, r, cc] = key.split(':');
+    if ((c.pid || c.memo || c.qty !== null) && pred(sid, fid, Number(r), Number(cc))) setCell(sid, fid, Number(r), Number(cc), { pid: null, qty: null, memo: '' });
+  });
+}
+function addFixture() {
+  const name = prompt('什器の名前', '新しい什器');
+  if (name === null) return;
+  const id = 'fx-' + newUid();
+  const order = Math.max(0, ...liveFixtures().map(f => f.order)) + 1;
+  store.fixtures[id] = stamp({ id, name: name.trim() || '新しい什器', cat: 'その他', order, shelves: [{ slots: 2 }, { slots: 2 }, { slots: 2 }], del: false });
+  save();
+  ui.fixture = id; saveUi();
+  renderFixtureEditor(); renderBoardTab(); renderPrintTab();
+}
+
+// ===== 印刷 =====
+function renderPrintSheets() {
+  const box = document.getElementById('printSheets');
+  const prev = new Set(Array.from(box.querySelectorAll('input:checked')).map(i => i.value));
+  const first = !box.children.length;
+  box.innerHTML = '';
+  liveSheets().forEach(sh => {
+    const l = document.createElement('label'); l.className = 'check';
+    const i = document.createElement('input'); i.type = 'checkbox'; i.value = sh.id; i.checked = first || prev.has(sh.id);
+    i.addEventListener('change', renderPrintPreview);
+    l.append(i, document.createTextNode(' ' + sh.name));
+    box.appendChild(l);
+  });
+}
+function selectedPrintSheets() { return Array.from(document.querySelectorAll('#printSheets input:checked')).map(i => i.value); }
+function buildFixtureHtml(sid, fx) {
+  let h = `<div class="p-fx"><h2>${escapeHtml(fx.name)}</h2>`;
+  fx.shelves.forEach((shelf, r) => {
+    h += `<div class="p-shelf" style="grid-template-columns:7mm repeat(${shelf.slots},1fr)"><div class="p-lab">${r + 1}段</div>`;
+    for (let c = 0; c < shelf.slots; c++) {
+      const cell = getCell(sid, fx.id, r, c);
+      if (!cell || !cell.pid) { h += '<div class="p-cell empty"></div>'; continue; }
+      const lab = productLabel(cell.pid);
+      const hasq = cell.qty !== null && cell.qty !== undefined;
+      h += `<div class="p-cell${hasq ? ' hasq' : ''}"><b class="${lab.gone ? 'gone' : ''}">${escapeHtml(lab.text)}</b>`;
+      if (cell.qty !== null && cell.qty !== undefined) h += `<span class="q">${escapeHtml(cell.qty)}個</span>`;
+      if (cell.memo) h += `<i>${escapeHtml(cell.memo)}</i>`;
+      h += '</div>';
+    }
+    h += '</div><div class="p-rail"></div>';
+  });
+  return h + '</div>';
+}
+function buildPrintHtml(sheetIds, combine) {
+  const now = new Date();
+  const fixtures = liveFixtures();
+  let h = '';
+  const page = (sh, fxList, suffix) => {
+    const last = latestChange();
+    h += `<div class="p-page"><div class="p-head"><div><h1>仕込み配置表<b>${escapeHtml(sh.name)}</b>${suffix ? `<span style="font-size:11pt; font-weight:400; margin-left:3mm;">${escapeHtml(suffix)}</span>` : ''}</h1>` +
+      `<div class="p-sub"><span>印刷 ${fmtDate(now)} ${pad2(now.getHours())}:${pad2(now.getMinutes())}</span><span>印刷者 ${escapeHtml(operator || '—')}</span>` +
+      (last ? `<span>最終変更 ${fmtWhen(last.at)} ${escapeHtml(last.by || '')}</span>` : '') + `</div></div>` +
+      `<div class="p-stamps"><div><span>担当</span><i></i></div><div><span>確認</span><i></i></div></div></div>` +
+      `<div class="p-fixtures">${fxList.map(fx => buildFixtureHtml(sh.id, fx)).join('')}</div>` +
+      `<div class="p-note"><span>メモ：</span></div></div>`;
+  };
+  sheetIds.forEach(sid => {
+    const sh = store.sheets[sid]; if (!sh || sh.del) return;
+    if (combine) page(sh, fixtures, '');
+    else fixtures.forEach(fx => page(sh, [fx], fx.name));
+  });
+  if (!h) h = '<p class="hint">印刷する時間帯を選んでください</p>';
+  return h;
+}
+// A4 横（印刷幅 273mm）で組んだものを、画面の幅に合わせて縮小して見せる
+function renderPrintPreview() {
+  const box = document.getElementById('printPreview');
+  box.innerHTML = `<div class="p-paper">${buildPrintHtml(selectedPrintSheets(), document.getElementById('printCombine').checked)}</div>`;
+  const paper = box.firstElementChild;
+  const avail = box.clientWidth - 16;
+  if (avail <= 0) return;
+  const scale = Math.min(1, avail / paper.offsetWidth);
+  paper.style.transform = `scale(${scale})`;
+  box.style.height = Math.ceil(paper.offsetHeight * scale + 16) + 'px';
+}
+window.addEventListener('resize', () => { if (document.getElementById('tab-print').classList.contains('active')) renderPrintPreview(); });
+function renderPrintTab() { renderPrintSheets(); renderPrintPreview(); }
+function doPrint() {
+  const ids = selectedPrintSheets();
+  if (!ids.length) { toast('印刷する時間帯を選んでください'); return; }
+  document.getElementById('printArea').innerHTML = buildPrintHtml(ids, document.getElementById('printCombine').checked);
+  window.print();
+}
+
+// ===== バックアップ =====
+function exportJson() {
+  const now = new Date();
+  const blob = new Blob([JSON.stringify({ app: 'shikomi', version: APP_VERSION, exportedAt: now.toISOString(), store }, null, 1)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `仕込み配置表_${now.getFullYear()}${pad2(now.getMonth() + 1)}${pad2(now.getDate())}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  toast('バックアップを保存しました');
+}
+function importJson(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const obj = JSON.parse(reader.result);
+      const incoming = normalizeStore(obj && obj.store ? obj.store : obj);
+      if (!incoming || !Object.keys(incoming.fixtures).length) throw new Error('bad');
+      if (!confirm('バックアップの内容をこの端末の配置表と統合します（項目ごとに新しい方が残ります）。よろしいですか？')) return;
+      // 復元は「戻したい」操作なので、バックアップ側を今の時刻に打ち直して必ず勝たせる
+      const now = Date.now();
+      ['fixtures', 'products', 'sheets', 'cells'].forEach(k => Object.values(incoming[k]).forEach(x => { x.at = now; }));
+      store = mergeStore(store, incoming);
+      save(); renderAll();
+      toast('バックアップを取り込みました');
+    } catch (e) {
+      toast('読み込めませんでした（ファイルの形式が違います）');
+    }
+  };
+  reader.readAsText(file);
+}
+
+// ===== クラウド同期（Firebase Realtime Database / REST のみ・SDK不使用） =====
+const sync = { storeId: null, status: 'unset', busy: false, pending: false, lastRev: null };
+function syncConfigured() { return !!(SYNC_DB_URL && sync.storeId); }
+const docUrl = suffix => `${SYNC_DB_URL}/shikomi/${sync.storeId}/doc${suffix || ''}.json`;
+async function sha256Hex(text) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+// パスコード→ストアID。DB にはこのIDのパスにだけ読み書きするため、パスコードを知らない人はデータの場所を推測できない
+function deriveStoreId(passcode) { return sha256Hex('shikomi-store:' + passcode); }
+function loadSyncConfig() {
+  try { const c = JSON.parse(localStorage.getItem(SYNC_KEY)); if (c && typeof c.storeId === 'string') sync.storeId = c.storeId; } catch (e) {}
+}
+function saveSyncConfig() {
+  if (sync.storeId) localStorage.setItem(SYNC_KEY, JSON.stringify({ storeId: sync.storeId }));
+  else localStorage.removeItem(SYNC_KEY);
+}
+const SYNC_STATUS_LABELS = { unset: '同期未設定', syncing: '⇅ 同期中…', ok: '⇅ 同期済み', offline: '⇅ オフライン', error: '⚠ 同期エラー' };
+function setSyncStatus(st) {
+  sync.status = st;
+  const chip = document.getElementById('syncChip');
+  chip.textContent = SYNC_STATUS_LABELS[st];
+  chip.className = 'sync-chip ' + st;
+  document.getElementById('storageNote').textContent = syncConfigured()
+    ? 'クラウド同期が有効です。配置表は同じパスコードを設定した全端末で共有されます。'
+    : 'データはこの端末のブラウザ（localStorage）にのみ保存されます。全員で共有するには、管理者が SETUP.md の手順で同期を有効にしてください。';
+}
+let syncDebounce = null;
+function scheduleSync() {
+  if (!syncConfigured()) return;
+  clearTimeout(syncDebounce);
+  syncDebounce = setTimeout(syncNow, 800);
+}
+async function syncDoc() {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const res = await fetch(docUrl(), { headers: { 'X-Firebase-ETag': 'true' } });
+    if (!res.ok) throw new Error('GET ' + res.status);
+    const etag = res.headers.get('ETag');
+    const node = await res.json();
+    const remote = node && node.data ? normalizeStore(node.data) : null;
+    const local = store;
+    const merged = mergeStore(local, remote);
+    const mergedSig = storeSig(merged), localSig = storeSig(local), remoteSig = storeSig(remote);
+    let changed = false;
+    if (mergedSig !== localSig) { store = merged; saveLocalOnly(); changed = true; }
+    if (mergedSig !== remoteSig) {
+      // 注意: RTDB は print=silent と if-match の併用を 400 で拒否するため素の URL で PUT する
+      const rev = newUid();
+      const put = await fetch(docUrl(), {
+        method: 'PUT',
+        headers: { 'if-match': etag, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ meta: { rev, at: Date.now() }, data: merged }),
+      });
+      if (put.status === 412) continue; // 他端末と競合 → 再取得してマージし直し
+      if (!put.ok) throw new Error('PUT ' + put.status);
+      sync.lastRev = rev;
+    } else {
+      sync.lastRev = node && node.meta ? node.meta.rev : null;
+    }
+    return changed;
+  }
+  throw new Error('conflict');
+}
+async function syncNow() {
+  if (!syncConfigured()) return;
+  if (sync.busy) { sync.pending = true; return; }
+  sync.busy = true;
+  setSyncStatus('syncing');
+  try {
+    const changed = await syncDoc();
+    if (changed) { renderAll(); toast('他の端末の変更を取り込みました'); }
+    setSyncStatus('ok');
+  } catch (e) {
+    setSyncStatus(navigator.onLine === false ? 'offline' : 'error');
+  } finally {
+    sync.busy = false;
+    if (sync.pending) { sync.pending = false; syncNow(); }
+  }
+}
+// 60秒ごとの軽量ポーリング。meta（数十バイト）だけ見て、変化があった時のみ本同期する
+async function pollTick() {
+  if (!syncConfigured() || sync.busy || document.hidden) return;
+  try {
+    const res = await fetch(docUrl('/meta'));
+    if (!res.ok) return;
+    const meta = await res.json();
+    const rev = meta ? meta.rev : null;
+    if (rev !== (sync.lastRev || null)) syncNow();
+  } catch (e) {}
+}
+function initSync() {
+  loadSyncConfig();
+  setSyncStatus(syncConfigured() ? 'syncing' : 'unset');
+  if (syncConfigured()) syncNow();
+  window.addEventListener('online', () => syncNow());
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) syncNow(); });
+  setInterval(pollTick, 60000);
+}
+function openSyncDialog() {
+  const connected = syncConfigured();
+  document.getElementById('syncMsg').textContent = '';
+  document.getElementById('syncSetupForm').hidden = connected || !SYNC_DB_URL;
+  document.getElementById('syncConnectedBox').hidden = !connected;
+  document.getElementById('syncNoServerBox').hidden = !!SYNC_DB_URL;
+  document.getElementById('syncOverlay').classList.add('show');
+}
+function closeSyncDialog() { document.getElementById('syncOverlay').classList.remove('show'); }
+async function connectSync() {
+  const msg = document.getElementById('syncMsg');
+  const passcode = document.getElementById('syncPasscode').value.trim();
+  if (passcode.length < 10) { msg.textContent = 'パスコードは10文字以上にしてください'; return; }
+  msg.textContent = '接続中…';
+  const storeId = await deriveStoreId(passcode);
+  try {
+    const res = await fetch(`${SYNC_DB_URL}/shikomi/${storeId}/doc/meta.json`);
+    if (!res.ok) throw new Error('GET ' + res.status);
+    const remoteMeta = await res.json();
+    const edited = !!latestChange();
+    if (remoteMeta && edited && !confirm('クラウドに既存の配置表があります。この端末の変更と統合します（項目ごとに新しい方が残ります）が、よろしいですか？')) {
+      msg.textContent = '';
+      return;
+    }
+    sync.storeId = storeId;
+    sync.lastRev = null;
+    saveSyncConfig();
+    document.getElementById('syncPasscode').value = '';
+    closeSyncDialog();
+    await syncNow();
+    toast('クラウド同期を開始しました');
+  } catch (e) {
+    msg.textContent = '接続できません。通信環境を確認してください';
+  }
+}
+function disconnectSync() {
+  if (!confirm('この端末の同期を解除します。配置表は消えません（この端末に残ります）。よろしいですか？')) return;
+  sync.storeId = null; sync.lastRev = null;
+  saveSyncConfig();
+  setSyncStatus('unset');
+  closeSyncDialog();
+  toast('同期を解除しました');
+}
+
+// ===== 描画・タブ・初期化 =====
+function renderHeader() {
+  const sh = currentSheet();
+  const last = latestChange();
+  document.getElementById('headerRight').innerHTML =
+    (sh ? `<b>${escapeHtml(sh.name)}</b><br>` : '') +
+    (last ? `最終変更 ${fmtWhen(last.at)}${last.by ? ' ' + escapeHtml(last.by) : ''}` : '初期配置のまま');
+}
+function renderSettings() {
+  renderFixtureEditor();
+  const nCells = countPlacements((sid) => store.sheets[sid] && !store.sheets[sid].del);
+  document.getElementById('storeMeta').textContent = `什器 ${liveFixtures().length}・時間帯 ${liveSheets().length}・商品 ${liveProducts().length}・配置済みの枠 ${nCells}`;
+}
+function renderAll() {
+  renderBoardTab();
+  renderProducts();
+  renderPrintTab();
+  renderSettings();
+  if (document.getElementById('cellOverlay').classList.contains('show')) renderCellSheet();
+}
+function activateTab(name) {
+  document.querySelectorAll('nav.tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  document.querySelectorAll('section.tab').forEach(s => s.classList.toggle('active', s.id === 'tab-' + name));
+  if (name === 'print') renderPrintTab();
+  scrollTo(0, 0);
+}
+document.querySelectorAll('nav.tabs button').forEach(btn => btn.addEventListener('click', () => activateTab(btn.dataset.tab)));
+
+const on = (id, fn, ev) => document.getElementById(id).addEventListener(ev || 'click', fn);
+// 配置
+on('sheetManage', openSheetDialog);
+on('moveCancel', cancelMove);
+// 枠シート
+on('csClose', closeCellSheet);
+on('csClear', () => { csSet({ pid: null, qty: null, memo: '' }); renderCellSheet(); renderBoard(); toast('空にしました'); });
+on('csMove', () => { closeCellSheet(); startMove(cs.r, cs.c); });
+on('csQtyMinus', () => csQtyChange(-1));
+on('csQtyPlus', () => csQtyChange(1));
+on('csQty', e => { const v = e.target.value.trim(); csSet({ qty: v === '' ? null : Math.max(0, Math.min(999, Math.floor(Number(v)) || 0)) }); renderBoard(); }, 'input');
+on('csMemo', e => { csSet({ memo: e.target.value.slice(0, 60) }); renderBoard(); }, 'input');
+on('csSearch', e => { cs.q = e.target.value; renderCellSheet(); }, 'input');
+on('csNewProduct', () => {
+  const fx = currentFixture();
+  const name = prompt('商品名（正式な名前）');
+  if (name === null || !name.trim()) return;
+  const short = prompt('表示名（枠に出す短い名前。空なら商品名）', '') || '';
+  const pid = addProduct(name, short, (fx && fx.cat) || 'その他');
+  if (pid) { csSet({ pid }); renderCellSheet(); renderBoard(); renderProducts(); }
+});
+document.getElementById('cellOverlay').addEventListener('click', e => { if (e.target.id === 'cellOverlay') closeCellSheet(); });
+// 時間帯
+on('sheetClose', closeSheetDialog);
+on('newSheetAdd', () => { const inp = document.getElementById('newSheetName'); const v = inp.value.trim(); if (!v) { toast('名前を入れてください'); return; } addSheet(v); inp.value = ''; renderSheetMgmt(); toast('追加しました: ' + v); });
+on('copyRun', () => copySheet(document.getElementById('copyFrom').value, document.getElementById('copyTo').value));
+// 商品
+on('npAdd', () => {
+  const pid = addProduct(document.getElementById('npName').value, document.getElementById('npShort').value, document.getElementById('npCat').value);
+  if (pid) { document.getElementById('npName').value = ''; document.getElementById('npShort').value = ''; renderProducts(); }
+});
+on('productSearch', e => { productQuery = e.target.value; renderProducts(); }, 'input');
+on('epSave', () => {
+  const p = store.products[editingPid]; if (!p) return;
+  const name = document.getElementById('epName').value.trim();
+  if (!name) { document.getElementById('epMsg').style.color = ''; document.getElementById('epMsg').textContent = '商品名を入れてください'; return; }
+  p.name = name; p.short = document.getElementById('epShort').value.trim(); p.cat = document.getElementById('epCat').value;
+  stamp(p); save(); closeProductDialog(); renderAll(); toast('保存しました');
+});
+on('epDelete', () => {
+  const p = store.products[editingPid]; if (!p) return;
+  const n = countPlacements((sid, fid, r, c, cell) => cell.pid === p.id && store.sheets[sid] && !store.sheets[sid].del);
+  if (!confirm(`「${p.short || p.name}」を商品一覧から削除します${n ? `。置かれている ${n} 枠には取り消し線で残ります` : ''}。よろしいですか？`)) return;
+  p.del = true; stamp(p); save(); closeProductDialog(); renderAll(); toast('削除しました');
+});
+on('epClose', closeProductDialog);
+// 印刷
+on('btnPrint', doPrint);
+on('printCombine', renderPrintPreview, 'change');
+// 設定
+on('fixtureAdd', addFixture);
+on('syncChip', openSyncDialog);
+on('syncSettings', openSyncDialog);
+on('syncClose', closeSyncDialog);
+on('syncConnect', connectSync);
+on('syncDisconnect', disconnectSync);
+on('operatorChip', openOperatorDialog);
+on('operatorSettings', openOperatorDialog);
+on('operatorClose', closeOperatorDialog);
+on('jsonExport', exportJson);
+on('jsonImportBtn', () => document.getElementById('jsonImportFile').click());
+on('jsonImportFile', e => { if (e.target.files[0]) importJson(e.target.files[0]); e.target.value = ''; }, 'change');
+
+function tickClock() {
+  const d = new Date();
+  document.getElementById('clock').textContent = `${fmtDate(d)} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
+tickClock(); setInterval(tickClock, 30000);
+
+fillCatSelect(document.getElementById('npCat'), CATS[0]);
+renderOperatorChip();
+saveLocalOnly(); // 初回は初期データを端末に保存
+renderAll();
+initSwipe();
+initSync();
+if (!operator) setTimeout(openOperatorDialog, 400);
+</script>
+</body>
+</html>
