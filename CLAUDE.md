@@ -48,7 +48,7 @@ store = { version, fixtures:{id→…}, products:{id→…}, sheets:{id→…}, 
 
 ### 印刷
 - 画面には出さない `#printArea` に `buildPrintHtml(sheetIds, combine)` を流し込んで `window.print()`。`@page{size:A4 landscape}`
-- 1 時間帯＝1 ページ。`combine` で全什器を左右に並べる（`.p-fixtures` は flex-wrap。iPhone の Safari が A4 縦で刷っても上下に積まれて崩れない）
+- 1 時間帯＝1 ページ。`combine` で全什器を 1 ページに。**用紙の向き** `ui.orient`（landscape／portrait・端末に保存）: 横は什器を左右に並べ、縦は `.p-portrait` で上下に積み枠を少し低くして A4 縦 1 ページに収める（2 什器×4 段で高さ約 872px／1047px）。`@page` は CSS に書かず、印刷直前に `applyPageStyle` が `#pageStyle` へ書き込む（後から向きを変えられるようにするため）
 - 画面のプレビューは同じ HTML を幅 273mm で組み、`transform: scale()` で縮小
 
 ## 技術方針（ユーザーと合意済みの制約）

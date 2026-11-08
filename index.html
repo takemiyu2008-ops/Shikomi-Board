@@ -186,6 +186,10 @@ label.field{display:block; font-size:12px; color:var(--sub); margin:12px 0 4px;}
 /* 印刷プレビュー（画面） */
 .preview{border:1px solid var(--line); border-radius:8px; background:#fff; padding:8px; overflow:hidden; position:relative;}
 .preview .p-paper{width:273mm; transform-origin:0 0;}
+.preview .p-paper.portrait{width:186mm;}
+.orient{display:flex; gap:8px; margin-top:4px;}
+.orient .btn{margin-top:0; flex:1;}
+.orient .btn.selected{background:var(--accent); color:#fff; font-weight:600;}
 .preview .p-page{margin-bottom:6mm; padding-bottom:6mm; border-bottom:0.8mm dashed var(--line);}
 .preview .p-page:last-child{border-bottom:none; margin-bottom:0;}
 .check{display:flex; align-items:center; gap:8px; font-size:15px; padding:8px 2px;}
@@ -193,8 +197,10 @@ label.field{display:block; font-size:12px; color:var(--sub); margin:12px 0 4px;}
 /* 印刷（A4 横）。画面には出さず、印刷のときだけ #printArea だけを出す */
 #printArea{display:none;}
 @media print{
-  @page{size:A4 landscape; margin:10mm 12mm;}
-  html,body{background:#fff; padding:0; overflow:visible;}
+  /* @page の向きは印刷時に #pageStyle へ書き込む（横＝A4 landscape／縦＝A4 portrait） */
+  /* 時間帯の色のアニメーション中に印刷が始まると下地が色付きのまま刷られるので、印刷ではアニメーションを切って白に固定する */
+  *{transition:none !important;}
+  html,body{background:#fff !important; padding:0; overflow:visible;}
   body > *:not(#printArea){display:none !important;}
   #printArea{display:block !important; color:#000; font-size:10pt; line-height:1.35;
     -webkit-print-color-adjust:exact; print-color-adjust:exact;}
@@ -214,7 +220,16 @@ label.field{display:block; font-size:12px; color:var(--sub); margin:12px 0 4px;}
 .p-stamps span{display:block; border-bottom:0.6pt solid #000; padding:0.6mm 0;}
 .p-stamps i{display:block; height:14mm;}
 .p-fixtures{display:flex; flex-wrap:wrap; gap:6mm 8mm; align-items:flex-start;}
-.p-fx{flex:1 1 120mm; min-width:0; border:1.2pt solid #000; border-radius:3mm; padding:3mm;}
+.p-fx{flex:1 1 120mm; min-width:0; border:1.2pt solid #000; border-radius:3mm; padding:3mm; break-inside:avoid; page-break-inside:avoid;}
+/* 縦向き（A4 縦）: 什器を上下に積む。段が多いと 1 ページに入らないので枠を少し低く・余白を詰める */
+.p-portrait .p-fixtures{flex-direction:column; gap:4mm;}
+.p-portrait .p-fx{flex:none; width:100%; padding:2.5mm;}
+.p-portrait .p-fx h2{margin-bottom:1.5mm;}
+.p-portrait .p-cell{min-height:16mm;}
+.p-portrait .p-shelf{gap:1.2mm; margin-bottom:1.2mm;}
+.p-portrait .p-rail{margin-bottom:2mm;}
+.p-portrait .p-head{margin-bottom:3mm;}
+.p-portrait .p-note{margin-top:3mm; min-height:10mm;}
 .p-fx h2{font-size:11pt; margin:0 0 2mm; text-align:center; letter-spacing:.1em;}
 .p-shelf{display:grid; gap:1.5mm; margin-bottom:1.5mm;}
 .p-shelf .p-lab{font-size:8pt; color:#444; display:flex; align-items:center; justify-content:center; writing-mode:vertical-rl; border:0.5pt solid #999; border-radius:1mm; background:#f3f3f3;}
@@ -292,9 +307,14 @@ label.field{display:block; font-size:12px; color:var(--sub); margin:12px 0 4px;}
   <div class="card">
     <h2>印刷する時間帯</h2>
     <div id="printSheets"></div>
-    <label class="check"><input type="checkbox" id="printCombine" checked> 什器を1ページにまとめて並べる</label>
-    <button class="btn" id="btnPrint">🖨 A4横で印刷</button>
-    <p class="hint">1時間帯＝1ページ。PDF にするなら印刷画面で「PDF として保存」。iPhone の Safari は横向きの指定を守らず A4 縦で刷ることがありますが、縦でも崩れないように作ってあります（横で刷りたいときは Mac の Chrome から）。</p>
+    <label class="check"><input type="checkbox" id="printCombine" checked> 什器を1ページにまとめる</label>
+    <label class="field" style="margin-top:8px;">用紙の向き（コピー機に合わせる）</label>
+    <div class="orient">
+      <button type="button" class="btn secondary" id="orientLandscape" data-orient="landscape">横（左右に並ぶ）</button>
+      <button type="button" class="btn secondary" id="orientPortrait" data-orient="portrait">縦（上下に積む）</button>
+    </div>
+    <button class="btn" id="btnPrint">🖨 印刷する</button>
+    <p class="hint">1時間帯＝1ページ。PDF にするなら印刷画面で「PDF として保存」。コピー機が縦しか受け付けないときは「縦」を選んでください。iPhone の Safari は横向きの指定を守らず縦で刷ることがあるので、iPhone から刷るときも「縦」が確実です。</p>
   </div>
   <div class="card">
     <h2>プレビュー</h2>
@@ -438,6 +458,7 @@ label.field{display:block; font-size:12px; color:var(--sub); margin:12px 0 4px;}
 
 <div id="toast"></div>
 <div id="printArea"></div>
+<style id="pageStyle"></style>
 
 <script>
 'use strict';
@@ -704,10 +725,13 @@ function openOperatorDialog() {
 function closeOperatorDialog() { document.getElementById('operatorOverlay').classList.remove('show'); }
 
 function loadUi() {
-  try { const u = JSON.parse(localStorage.getItem(UI_KEY)); if (u && typeof u === 'object') return { sheet: u.sheet || null, fixture: u.fixture || null }; } catch (e) {}
-  return { sheet: null, fixture: null };
+  try {
+    const u = JSON.parse(localStorage.getItem(UI_KEY));
+    if (u && typeof u === 'object') return { sheet: u.sheet || null, fixture: u.fixture || null, orient: u.orient === 'portrait' ? 'portrait' : 'landscape' };
+  } catch (e) {}
+  return { sheet: null, fixture: null, orient: 'landscape' };
 }
-function saveUi() { localStorage.setItem(UI_KEY, JSON.stringify({ sheet: ui.sheet, fixture: ui.fixture })); }
+function saveUi() { localStorage.setItem(UI_KEY, JSON.stringify({ sheet: ui.sheet, fixture: ui.fixture, orient: ui.orient })); }
 function currentSheet() {
   const list = liveSheets();
   if (!list.length) return null;
@@ -1133,14 +1157,16 @@ function addFixture() {
 }
 
 // ===== 印刷 =====
+// 印刷対象の時間帯。初めて見る時間帯（起動時・追加直後）はチェック済みにし、外した選択は描き直しても保つ
+const printKnown = new Set();
 function renderPrintSheets() {
   const box = document.getElementById('printSheets');
   const prev = new Set(Array.from(box.querySelectorAll('input:checked')).map(i => i.value));
-  const first = !box.children.length;
   box.innerHTML = '';
   liveSheets().forEach(sh => {
     const l = document.createElement('label'); l.className = 'check';
-    const i = document.createElement('input'); i.type = 'checkbox'; i.value = sh.id; i.checked = first || prev.has(sh.id);
+    const i = document.createElement('input'); i.type = 'checkbox'; i.value = sh.id; i.checked = !printKnown.has(sh.id) || prev.has(sh.id);
+    printKnown.add(sh.id);
     i.addEventListener('change', renderPrintPreview);
     l.append(i, document.createTextNode(' ' + sh.name));
     box.appendChild(l);
@@ -1165,14 +1191,15 @@ function buildFixtureHtml(sid, fx) {
   });
   return h + '</div>';
 }
-function buildPrintHtml(sheetIds, combine) {
+function buildPrintHtml(sheetIds, combine, orient) {
+  orient = orient || ui.orient || 'landscape';
   const now = new Date();
   const fixtures = liveFixtures();
   let h = '';
   const page = (sh, fxList, suffix) => {
     const last = latestChange();
     const th = THEMES[THEMES[sh.color] ? sh.color : guessTheme(sh.name)];
-    h += `<div class="p-page" style="--p-title:${th.head}"><div class="p-head"><div><h1>仕込み配置表<b>${escapeHtml(sh.name)}</b>${suffix ? `<span style="font-size:11pt; font-weight:400; margin-left:3mm;">${escapeHtml(suffix)}</span>` : ''}</h1>` +
+    h += `<div class="p-page${orient === 'portrait' ? ' p-portrait' : ''}" style="--p-title:${th.head}"><div class="p-head"><div><h1>仕込み配置表<b>${escapeHtml(sh.name)}</b>${suffix ? `<span style="font-size:11pt; font-weight:400; margin-left:3mm;">${escapeHtml(suffix)}</span>` : ''}</h1>` +
       `<div class="p-sub"><span>印刷 ${fmtDate(now)} ${pad2(now.getHours())}:${pad2(now.getMinutes())}</span><span>印刷者 ${escapeHtml(operator || '—')}</span>` +
       (last ? `<span>最終変更 ${fmtWhen(last.at)} ${escapeHtml(last.by || '')}</span>` : '') + `</div></div>` +
       `<div class="p-stamps"><div><span>担当</span><i></i></div><div><span>確認</span><i></i></div></div></div>` +
@@ -1188,9 +1215,20 @@ function buildPrintHtml(sheetIds, combine) {
   return h;
 }
 // A4 横（印刷幅 273mm）で組んだものを、画面の幅に合わせて縮小して見せる
+function renderOrient() {
+  document.querySelectorAll('.orient .btn').forEach(b => b.classList.toggle('selected', b.dataset.orient === ui.orient));
+}
+function setOrient(o) { ui.orient = o === 'portrait' ? 'portrait' : 'landscape'; saveUi(); renderOrient(); renderPrintPreview(); }
+// 印刷直前に @page の向きを書き込む（CSS の @page は後から差し替えられないため style 要素ごと入れ替える）
+function applyPageStyle(orient) {
+  document.getElementById('pageStyle').textContent = orient === 'portrait'
+    ? '@page{size:A4 portrait; margin:10mm 12mm;}'
+    : '@page{size:A4 landscape; margin:10mm 12mm;}';
+}
 function renderPrintPreview() {
   const box = document.getElementById('printPreview');
-  box.innerHTML = `<div class="p-paper">${buildPrintHtml(selectedPrintSheets(), document.getElementById('printCombine').checked)}</div>`;
+  renderOrient();
+  box.innerHTML = `<div class="p-paper${ui.orient === 'portrait' ? ' portrait' : ''}">${buildPrintHtml(selectedPrintSheets(), document.getElementById('printCombine').checked, ui.orient)}</div>`;
   const paper = box.firstElementChild;
   const avail = box.clientWidth - 16;
   if (avail <= 0) return;
@@ -1203,7 +1241,8 @@ function renderPrintTab() { renderPrintSheets(); renderPrintPreview(); }
 function doPrint() {
   const ids = selectedPrintSheets();
   if (!ids.length) { toast('印刷する時間帯を選んでください'); return; }
-  document.getElementById('printArea').innerHTML = buildPrintHtml(ids, document.getElementById('printCombine').checked);
+  applyPageStyle(ui.orient);
+  document.getElementById('printArea').innerHTML = buildPrintHtml(ids, document.getElementById('printCombine').checked, ui.orient);
   window.print();
 }
 
@@ -1458,6 +1497,8 @@ on('epClose', closeProductDialog);
 // 印刷
 on('btnPrint', doPrint);
 on('printCombine', renderPrintPreview, 'change');
+on('orientLandscape', () => setOrient('landscape'));
+on('orientPortrait', () => setOrient('portrait'));
 // 設定
 on('fixtureAdd', addFixture);
 on('syncChip', openSyncDialog);
@@ -1482,6 +1523,7 @@ fillCatSelect(document.getElementById('npCat'), CATS[0]);
 renderOperatorChip();
 saveLocalOnly(); // 初回は初期データを端末に保存
 renderAll();
+applyPageStyle(ui.orient);
 initSwipe();
 initSync();
 if (!operator) setTimeout(openOperatorDialog, 400);

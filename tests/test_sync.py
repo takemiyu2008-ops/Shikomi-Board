@@ -357,6 +357,16 @@ def test_local(browser, base):
     page.click('nav.tabs button[data-tab=print]')
     check('印刷タブ: 時間帯のチェックが 4 つ', page.locator('#printSheets input').count() == 4)
     check('印刷プレビューが縮小表示される', page.evaluate("document.querySelector('#printPreview .p-paper').style.transform").startswith('scale('))
+    check('既定は横向き', page.evaluate("document.getElementById('pageStyle').textContent") == '@page{size:A4 landscape; margin:10mm 12mm;}' and page.locator('#orientLandscape.selected').count() == 1)
+    page.click('#orientPortrait')
+    check('縦向きに切り替え: プレビューが縦の紙幅・ページに p-portrait', page.locator('#printPreview .p-paper.portrait').count() == 1 and page.locator('#printPreview .p-page.p-portrait').count() == 4)
+    check('縦向きの印刷 HTML', 'p-portrait' in page.evaluate("buildPrintHtml(['sh-am'], true, 'portrait')") and 'p-portrait' not in page.evaluate("buildPrintHtml(['sh-am'], true, 'landscape')"))
+    page.evaluate("applyPageStyle(ui.orient)")
+    check('縦向きの @page', page.evaluate("document.getElementById('pageStyle').textContent") == '@page{size:A4 portrait; margin:10mm 12mm;}')
+    page.reload()
+    page.wait_for_selector('#board .cell')
+    check('向きの選択は端末に残る', page.evaluate('ui.orient') == 'portrait')
+    page.evaluate("setOrient('landscape')")
 
     # バックアップ書き出し→復元（復元は新しい時刻で勝つ）
     dump = page.evaluate("JSON.stringify({app:'shikomi', version:1, store})")
