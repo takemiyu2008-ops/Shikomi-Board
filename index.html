@@ -490,6 +490,7 @@ const THEMES = {
   plain:   { label: '標準',   bg: '#f2f4f7', head: '#1c2434', accent: '#0f6fde', board: '#f9fafb', board2: '#eef1f5', chip: '#eef1f5' },
 };
 function guessTheme(name) {
+  if (/全/.test(name)) return 'green';
   if (/深夜|夜/.test(name)) return 'night';
   if (/朝|早/.test(name)) return 'morning';
   if (/昼/.test(name)) return 'noon';
@@ -522,6 +523,7 @@ const SEED = {
     { id: 'sh-am', name: '朝', order: 1, color: 'morning' },
     { id: 'sh-noon', name: '昼', order: 2, color: 'noon' },
     { id: 'sh-pm', name: '夕', order: 3, color: 'evening' },
+    { id: 'sh-all', name: '全時間帯', order: 4, color: 'green' }, // 2026-11-08 主の依頼で追加（朝昼夕と並ぶ独立した 4 枚目）
   ],
   products: [
     ['p-b01', 'お店で焼いたカリッもちっバター餅', 'バター餅', 'パン'],
@@ -561,6 +563,15 @@ const SEED = {
   ],
 };
 
+// 初期データのうち、まだ一度も現れていない什器・時間帯・商品を足す（後から初期データに加えたものを既存の端末にも出すため）。
+// 削除済み（墓標あり）や編集済みのものには触らない
+function addMissingSeeds(s) {
+  let added = false;
+  SEED.fixtures.forEach(f => { if (!s.fixtures[f.id]) { s.fixtures[f.id] = { id: f.id, name: f.name, cat: f.cat, order: f.order, shelves: f.shelves.map(n => ({ slots: n })), at: SEED_AT, by: '', del: false }; added = true; } });
+  SEED.sheets.forEach(sh => { if (!s.sheets[sh.id]) { s.sheets[sh.id] = { id: sh.id, name: sh.name, order: sh.order, color: sh.color, at: SEED_AT, by: '', del: false }; added = true; } });
+  SEED.products.forEach(([id, name, short, cat]) => { if (!s.products[id]) { s.products[id] = { id, name, short, cat, at: SEED_AT, by: '', del: false }; added = true; } });
+  return added;
+}
 function seedStore() {
   const s = emptyStore();
   SEED.fixtures.forEach(f => { s.fixtures[f.id] = { id: f.id, name: f.name, cat: f.cat, order: f.order, shelves: f.shelves.map(n => ({ slots: n })), at: SEED_AT, by: '', del: false }; });
@@ -640,6 +651,7 @@ function saveLocalOnly() { localStorage.setItem(STORAGE_KEY, JSON.stringify(stor
 function save() { saveLocalOnly(); scheduleSync(); }
 
 let store = load();
+addMissingSeeds(store);
 let operator = loadOperator();
 let ui = loadUi();
 const move = { from: null }; // 入れ替え中の枠 {sid,fid,r,c}
@@ -1323,7 +1335,8 @@ async function syncDoc() {
     const mergedSig = storeSig(merged), localSig = storeSig(local), remoteSig = storeSig(remote);
     let changed = false;
     if (mergedSig !== localSig) { store = merged; saveLocalOnly(); changed = true; }
-    if (mergedSig !== remoteSig) {
+    if (addMissingSeeds(merged)) { store = merged; saveLocalOnly(); changed = true; }
+    if (storeSig(merged) !== remoteSig) {
       // 注意: RTDB は print=silent と if-match の併用を 400 で拒否するため素の URL で PUT する
       const rev = newUid();
       const put = await fetch(docUrl(), {

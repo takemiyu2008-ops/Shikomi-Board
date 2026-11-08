@@ -211,8 +211,8 @@ def test_local(browser, base):
     page.goto(f'{base}/local/index.html')
     page.wait_for_selector('#board .cell')
 
-    check('初期データ: 什器 2・時間帯 3・商品 23',
-          page.evaluate('[liveFixtures().length, liveSheets().length, liveProducts().length]') == [2, 3, 23])
+    check('初期データ: 什器 2・時間帯 4（朝昼夕＋全時間帯）・商品 23',
+          page.evaluate('[liveFixtures().length, liveSheets().length, liveProducts().length]') == [2, 4, 23])
     check('初期配置: パン什器 11 枠すべて埋まる', board_cells(page).count() == 11 and len(placed_texts(page)) == 11)
     open_fixture(page, 'フライヤー')
     check('初期配置: フライヤー 12 枠すべて埋まる', board_cells(page).count() == 12 and len(placed_texts(page)) == 12)
@@ -297,8 +297,9 @@ def test_local(browser, base):
     page.click('#sheetManage')
     page.fill('#newSheetName', '深夜')
     page.click('#newSheetAdd')
-    check('時間帯を追加', page.evaluate('liveSheets().map(s=>s.name)') == ['朝', '昼', '夕', '深夜'])
-    check('追加した時間帯は名前から色が決まる（深夜→藍）', page.evaluate("liveSheets()[3].color") == 'night')
+    check('時間帯を追加', page.evaluate('liveSheets().map(s=>s.name)') == ['朝', '昼', '夕', '全時間帯', '深夜'])
+    check('追加した時間帯は名前から色が決まる（深夜→藍）', page.evaluate("liveSheets()[4].color") == 'night')
+    check('全時間帯は若葉色', page.evaluate("store.sheets['sh-all'].color") == 'green')
     page.locator('#sheetMgmt input').nth(0).fill('早朝')
     page.locator('#sheetMgmt input').nth(0).dispatch_event('change')
     check('時間帯の名前変更', page.evaluate("store.sheets['sh-am'].name") == '早朝')
@@ -355,11 +356,11 @@ def test_local(browser, base):
     check('印刷: 2 時間帯・什器別 → 6 ページ', html2.count('class="p-page"') == 6)
     check('印刷: 商品名・個数・メモが入る', 'メロンパン' in html1 and '揚げ鶏' in html1 and '早朝' in html1)
     page.click('nav.tabs button[data-tab=print]')
-    check('印刷タブ: 時間帯のチェックが 4 つ', page.locator('#printSheets input').count() == 4)
+    check('印刷タブ: 時間帯のチェックが 5 つ', page.locator('#printSheets input').count() == 5)
     check('印刷プレビューが縮小表示される', page.evaluate("document.querySelector('#printPreview .p-paper').style.transform").startswith('scale('))
     check('既定は横向き', page.evaluate("document.getElementById('pageStyle').textContent") == '@page{size:A4 landscape; margin:10mm 12mm;}' and page.locator('#orientLandscape.selected').count() == 1)
     page.click('#orientPortrait')
-    check('縦向きに切り替え: プレビューが縦の紙幅・ページに p-portrait', page.locator('#printPreview .p-paper.portrait').count() == 1 and page.locator('#printPreview .p-page.p-portrait').count() == 4)
+    check('縦向きに切り替え: プレビューが縦の紙幅・ページに p-portrait', page.locator('#printPreview .p-paper.portrait').count() == 1 and page.locator('#printPreview .p-page.p-portrait').count() == 5)
     check('縦向きの印刷 HTML', 'p-portrait' in page.evaluate("buildPrintHtml(['sh-am'], true, 'portrait')") and 'p-portrait' not in page.evaluate("buildPrintHtml(['sh-am'], true, 'landscape')"))
     page.evaluate("applyPageStyle(ui.orient)")
     check('縦向きの @page', page.evaluate("document.getElementById('pageStyle').textContent") == '@page{size:A4 portrait; margin:10mm 12mm;}')
@@ -375,6 +376,14 @@ def test_local(browser, base):
     page.evaluate("""(txt) => importJson(new File([txt], 'b.json', {type:'application/json'}))""", dump)
     page.wait_for_function("store.cells['sh-am:fx-bread:0:0'].pid === 'p-b03'", timeout=3000)
     check('バックアップ復元で配置が戻る', True)
+
+    # 後から初期データに加えた時間帯は、古いデータの端末にも現れる。削除済みなら戻らない
+    page.evaluate("delete store.sheets['sh-all']; saveLocalOnly();")
+    page.reload(); page.wait_for_selector('#board .cell')
+    check('無い初期時間帯は起動時に補われる', page.evaluate("!!store.sheets['sh-all'] && !store.sheets['sh-all'].del"))
+    page.evaluate("const s = store.sheets['sh-all']; s.del = true; stamp(s); save();")
+    page.reload(); page.wait_for_selector('#board .cell')
+    check('削除した初期時間帯は戻らない', page.evaluate("store.sheets['sh-all'].del") is True)
 
     check('Firebase への通信がない', len(page.fb_requests) == 0, str(page.fb_requests[:3]))
     check('JS エラーなし', not page.errors, str(page.errors[:3]))
@@ -452,7 +461,7 @@ def test_sync(browser, base):
     a.wait_for_timeout(1200)
     a.wait_for_function("sync.status === 'ok' && !sync.busy", timeout=5000)
     sync_now(b)
-    check('B: 削除された時間帯は消え、別の時間帯が開く', b.evaluate('liveSheets().length') == 2 and b.locator('#sheetChips button.active').count() == 1)
+    check('B: 削除された時間帯は消え、別の時間帯が開く', b.evaluate('liveSheets().length') == 3 and b.locator('#sheetChips button.active').count() == 1)
 
     # 什器の枠数変更も伝わる
     a.evaluate("const f = store.fixtures['fx-fryer']; f.shelves[1].slots = 3; stamp(f); save();")
