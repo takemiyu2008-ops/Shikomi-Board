@@ -394,6 +394,27 @@ def test_local(browser, base):
     check('向きの選択は端末に残る', page.evaluate('ui.orient') == 'portrait')
     page.evaluate("setOrient('landscape')")
 
+    # 印刷画面が開かないブラウザ（Android のアプリ内ブラウザは window.print が何もしない）では案内を出す
+    page.click('nav.tabs button[data-tab=print]')
+    check('ふつうのブラウザではアプリ内ブラウザの注意を出さない', page.locator('#printInAppNote').is_hidden())
+    page.evaluate("window.print = () => { window.dispatchEvent(new Event('beforeprint')); }")
+    page.click('#btnPrint')
+    page.wait_for_timeout(1900)
+    check('印刷画面が開いたら案内は出ない', page.locator('#printHelpOverlay.show').count() == 0)
+    check('印刷: printArea に配置表が入る', page.locator('#printArea .p-page').count() >= 1)
+    page.evaluate("window.print = () => {}")
+    page.click('#btnPrint')
+    check('押した直後はまだ案内を出さない', page.locator('#printHelpOverlay.show').count() == 0)
+    page.wait_for_selector('#printHelpOverlay.show', timeout=4000)
+    check('印刷が無反応なら案内が出る', page.locator('#printHelpOverlay.show').count() == 1)
+    check('Android でなければ「Chrome で開く」は出さない', page.locator('#printHelpChrome').is_hidden())
+    page.click('#printHelpClose')
+    check('案内を閉じられる', page.locator('#printHelpOverlay.show').count() == 0)
+    page.evaluate("window.print = undefined")
+    page.click('#btnPrint')
+    check('window.print が無いブラウザはすぐ案内', page.locator('#printHelpOverlay.show').count() == 1)
+    page.click('#printHelpClose')
+
     # バックアップ書き出し→復元（復元は新しい時刻で勝つ）
     dump = page.evaluate("JSON.stringify({app:'shikomi', version:1, store})")
     page.evaluate("setCell('sh-am','fx-bread',0,0,{pid:null,qty:null,memo:''})")

@@ -317,6 +317,8 @@ label.field{display:block; font-size:12px; color:var(--sub); margin:12px 0 4px;}
     </div>
     <button class="btn" id="btnPrint">🖨 印刷する</button>
     <p class="hint">1時間帯＝1ページ。PDF にするなら印刷画面で「PDF として保存」。コピー機が縦しか受け付けないときは「縦」を選んでください。iPhone の Safari は横向きの指定を守らず縦で刷ることがあるので、iPhone から刷るときも「縦」が確実です。</p>
+    <p class="hint">Android は <b>Chrome</b> で開いて印刷します（LINE などのアプリの中で開いた画面からは印刷できません）。印刷画面にプリンターが出てこないときは、スマホの「設定」で「印刷」を検索して「既定の印刷サービス」をオンにし、店の Wi-Fi につないでください。</p>
+    <p class="hint" id="printInAppNote" hidden style="color:var(--out); font-weight:600;">⚠ いまはアプリの中のブラウザで開いているため、このままでは印刷できません。<button type="button" class="btn secondary" id="printInAppHelp" style="margin-top:8px;">印刷できる開き方を見る</button></p>
   </div>
   <div class="card">
     <h2>プレビュー</h2>
@@ -455,6 +457,20 @@ label.field{display:block; font-size:12px; color:var(--sub); margin:12px 0 4px;}
     <p class="desc">この端末で入力する人の名前を選んでください。配置を変えた記録にこの名前が付きます。ヘッダーの「👤 名前」からいつでも変更できます。</p>
     <div class="op-btns" id="operatorBtns"></div>
     <button class="btn secondary" id="operatorClose">閉じる</button>
+  </div>
+</div>
+
+<!-- 印刷画面が開かなかったときの案内 -->
+<div class="modal-overlay" id="printHelpOverlay">
+  <div class="modal">
+    <h2>印刷画面を開けませんでした</h2>
+    <p class="desc">このブラウザからは印刷画面を開けません。LINE などのアプリの中で開いていると印刷できないので、<strong id="printHelpBrowser">Chrome</strong> で開き直してから「🖨 印刷する」を押してください。</p>
+    <button class="btn" id="printHelpChrome" hidden>Chrome で開く</button>
+    <button class="btn secondary" id="printHelpCopy">この画面の URL をコピー</button>
+    <input type="text" id="printHelpUrl" readonly hidden style="margin-top:8px; font-size:13px;">
+    <p class="desc" style="margin-top:10px;">「Chrome で開く」で切り替わらないときは、URL をコピーして Chrome のアドレス欄に貼り付けてください。開き直した直後は、操作者と同期パスコードをもう一度入れる必要があります（配置表は同期で戻ります）。</p>
+    <p class="desc">印刷画面は出るのにプリンターが選べないときは、スマホの「設定」で「印刷」を検索して「既定の印刷サービス」をオンにし、店の Wi-Fi につないでください。</p>
+    <button class="btn secondary" id="printHelpClose">閉じる</button>
   </div>
 </div>
 
@@ -1285,13 +1301,64 @@ function renderPrintPreview() {
   box.style.height = Math.ceil(paper.offsetHeight * scale + 16) + 'px';
 }
 window.addEventListener('resize', () => { if (document.getElementById('tab-print').classList.contains('active')) renderPrintPreview(); });
-function renderPrintTab() { renderPrintSheets(); renderPrintPreview(); }
+function renderPrintTab() { renderPrintSheets(); renderPrintPreview(); document.getElementById('printInAppNote').hidden = !isInAppBrowser(); }
 function doPrint() {
   const ids = selectedPrintSheets();
   if (!ids.length) { toast('印刷する時間帯を選んでください'); return; }
   applyPageStyle(ui.orient);
   document.getElementById('printArea').innerHTML = buildPrintHtml(ids, document.getElementById('printCombine').checked, ui.orient);
-  window.print();
+  printWithFallback();
+}
+// Android の LINE などアプリ内ブラウザ（WebView）は window.print() があっても何もしない（2026-11-17 Android で「押しても反応しない」）。
+// 印刷画面が開けば beforeprint／afterprint が来るか、画面が裏に回る（Android は印刷画面が別画面）。
+// どれも来なければ「開けなかった」とみなして案内を出す
+const PRINT_WAIT_MS = 1500;
+function isAndroid() { return /Android/i.test(navigator.userAgent); }
+function isInAppBrowser() { return /Line\/|; wv\)|FBAN|FBAV|Instagram|MicroMessenger/i.test(navigator.userAgent); }
+function printWithFallback() {
+  let opened = false, timer = null;
+  const mq = window.matchMedia ? window.matchMedia('print') : null;
+  const mark = () => { opened = true; cleanup(); };
+  const onVis = () => { if (document.hidden) mark(); };
+  const cleanup = () => {
+    clearTimeout(timer);
+    window.removeEventListener('beforeprint', mark); window.removeEventListener('afterprint', mark);
+    window.removeEventListener('blur', mark); document.removeEventListener('visibilitychange', onVis);
+    if (mq && mq.removeEventListener) mq.removeEventListener('change', mark);
+  };
+  window.addEventListener('beforeprint', mark); window.addEventListener('afterprint', mark);
+  window.addEventListener('blur', mark); document.addEventListener('visibilitychange', onVis);
+  if (mq && mq.addEventListener) mq.addEventListener('change', mark);
+  try {
+    if (typeof window.print !== 'function') throw new Error('no print');
+    window.print();
+  } catch (e) { cleanup(); openPrintHelp(); return; }
+  if (opened) return;
+  timer = setTimeout(() => { cleanup(); if (!opened) openPrintHelp(); }, PRINT_WAIT_MS);
+}
+function pageUrl() { return location.href.split('#')[0]; }
+function openPrintHelp() {
+  const android = isAndroid();
+  document.getElementById('printHelpBrowser').textContent = android ? 'Chrome' : 'Safari';
+  document.getElementById('printHelpChrome').hidden = !(android && /^https?:$/.test(location.protocol));
+  document.getElementById('printHelpUrl').hidden = true;
+  document.getElementById('printHelpOverlay').classList.add('show');
+}
+function closePrintHelp() { document.getElementById('printHelpOverlay').classList.remove('show'); }
+// Android: Chrome を名指しで開く intent リンク。アプリ内ブラウザによっては効かないので URL のコピーも併設
+function openInChrome() {
+  const u = new URL(pageUrl());
+  location.href = `intent://${u.host}${u.pathname}${u.search}#Intent;scheme=${u.protocol.replace(':', '')};package=com.android.chrome;end`;
+}
+function copyPageUrl() {
+  const url = pageUrl();
+  const fallback = () => {
+    const box = document.getElementById('printHelpUrl');
+    box.hidden = false; box.value = url; box.focus(); box.select();
+    toast('URL を長押ししてコピーしてください');
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(() => toast('URL をコピーしました'), fallback);
+  else fallback();
 }
 
 // ===== バックアップ =====
@@ -1545,6 +1612,10 @@ on('epDelete', () => {
 on('epClose', closeProductDialog);
 // 印刷
 on('btnPrint', doPrint);
+on('printInAppHelp', openPrintHelp);
+on('printHelpChrome', openInChrome);
+on('printHelpCopy', copyPageUrl);
+on('printHelpClose', closePrintHelp);
 on('printCombine', renderPrintPreview, 'change');
 on('orientLandscape', () => setOrient('landscape'));
 on('orientPortrait', () => setOrient('portrait'));
