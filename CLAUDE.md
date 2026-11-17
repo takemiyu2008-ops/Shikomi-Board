@@ -52,6 +52,7 @@ store = { version, fixtures:{id→…}, products:{id→…}, sheets:{id→…}, 
 - 1 時間帯＝1 ページ。`combine` で全什器を 1 ページに。**用紙の向き** `ui.orient`（landscape／portrait・端末に保存）: 横は什器を左右に並べ、縦は `.p-portrait` で上下に積み枠を少し低くして A4 縦 1 ページに収める（2 什器×4 段で高さ約 872px／1047px）。`@page` は CSS に書かず、印刷直前に `applyPageStyle` が `#pageStyle` へ書き込む（後から向きを変えられるようにするため）
 - 画面のプレビューは同じ HTML を幅 273mm で組み、`transform: scale()` で縮小
 - **印刷画面が開かない端末への案内**（2026-11-17 Android で「押しても反応しない」）: LINE などのアプリ内ブラウザ（WebView）は `window.print()` が何もしない。`printWithFallback` が `beforeprint`／`afterprint`／`blur`／`visibilitychange` を 1.5 秒待ち、どれも来なければ `#printHelpOverlay`（Chrome で開く intent リンク・URL コピー）を出す。UA でアプリ内ブラウザと分かるとき（`isInAppBrowser`）は印刷タブに先に注意を出す。プリンターが一覧に出ないのは Android 側の印刷サービスの問題で、コードでは直せない（説明文で案内）
+- `fillPrintArea` が `#printArea` と `@page` を**常に最新に保つ**（プレビューを描くたび）。ボタンが効かない端末でも、ブラウザのメニュー（Chrome の ︙→共有→印刷）から同じ配置表が刷れるようにするため。Android の原因は実機未確認（2026-11-17 時点。店の Wi-Fi 未接続でプリンターが出ない線が有力）
 
 ## 技術方針（ユーザーと合意済みの制約）
 

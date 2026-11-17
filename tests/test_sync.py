@@ -397,6 +397,10 @@ def test_local(browser, base):
     # 印刷画面が開かないブラウザ（Android のアプリ内ブラウザは window.print が何もしない）では案内を出す
     page.click('nav.tabs button[data-tab=print]')
     check('ふつうのブラウザではアプリ内ブラウザの注意を出さない', page.locator('#printInAppNote').is_hidden())
+    check('ボタンを押す前から printArea に配置表が入っている（ブラウザのメニューからも刷れる）', page.locator('#printArea .p-page').count() == 5)
+    page.click('#orientPortrait')
+    check('向きを変えると printArea と @page も追従', page.locator('#printArea .p-page.p-portrait').count() == 5 and 'portrait' in page.evaluate("document.getElementById('pageStyle').textContent"))
+    page.click('#orientLandscape')
     page.evaluate("window.print = () => { window.dispatchEvent(new Event('beforeprint')); }")
     page.click('#btnPrint')
     page.wait_for_timeout(1900)
@@ -408,6 +412,7 @@ def test_local(browser, base):
     page.wait_for_selector('#printHelpOverlay.show', timeout=4000)
     check('印刷が無反応なら案内が出る', page.locator('#printHelpOverlay.show').count() == 1)
     check('Android でなければ「Chrome で開く」は出さない', page.locator('#printHelpChrome').is_hidden())
+    check('案内に端末の情報が出る', 'Mozilla' in page.locator('#printHelpUa').inner_text())
     page.click('#printHelpClose')
     check('案内を閉じられる', page.locator('#printHelpOverlay.show').count() == 0)
     page.evaluate("window.print = undefined")
